@@ -1,0 +1,26 @@
+[
+  {
+    "id": 0,
+    "activity": "asd",
+    "short": "ss",
+    "hours": 0,
+    "minutes": 0,
+    "function": "Default"
+  },
+  {
+    "id": 1,
+    "activity": "asd2",
+    "short": "s",
+    "hours": 0,
+    "minutes": 0,
+    "function": "Default"
+  },
+  {
+    "id": 2,
+    "activity": "asd3",
+    "short": "ff",
+    "hours": 0,
+    "minutes": 0,
+    "function": "Default"
+  }
+]
