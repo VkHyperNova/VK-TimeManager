@@ -84,6 +84,7 @@ func Commandline(){
 	data := AddDefaultCommands()
 
 	reader := bufio.NewReader(os.Stdin)
+	
 
 	for true {
 
@@ -112,16 +113,20 @@ func AddDefaultCommands() []JsonData{
 
 	// Add to map
 	DefaultCommands[1] = map[string]string{}
-	DefaultCommands[1]["name"] = "add"
-	DefaultCommands[1]["short"] = "a"
+	DefaultCommands[1]["name"] = "top"
+	DefaultCommands[1]["short"] = "t"
 
 	DefaultCommands[2] = map[string]string{}
-	DefaultCommands[2]["name"] = "delete"
-	DefaultCommands[2]["short"] = "del"
+	DefaultCommands[2]["name"] = "add"
+	DefaultCommands[2]["short"] = "a"
 
 	DefaultCommands[3] = map[string]string{}
-	DefaultCommands[3]["name"] = "quit"
-	DefaultCommands[3]["short"] = "q"
+	DefaultCommands[3]["name"] = "delete"
+	DefaultCommands[3]["short"] = "del"
+
+	DefaultCommands[4] = map[string]string{}
+	DefaultCommands[4]["name"] = "quit"
+	DefaultCommands[4]["short"] = "q"
 
 	// Append to data 
 	for _, value := range DefaultCommands {
@@ -129,6 +134,7 @@ func AddDefaultCommands() []JsonData{
 		data = append(data, NewValues)
 
 	}
+	
 
 	return data
 }
@@ -146,6 +152,8 @@ func MainSwitch(command string, data []JsonData, reader *bufio.Reader){
 				DeleteActivity()
 			} else if value.Function == "quit" {
 				quit()
+			} else if value.Function == "top" {
+				topActivities(data)
 			} else {
 				ClearScreen()
 				start := time.Now()
@@ -246,6 +254,34 @@ func StartActivity(reader *bufio.Reader, start time.Time, Activity string, id in
 	}
 }
 
+// Top activities
+func topActivities(data []JsonData){
+
+	/*Order := []string{}
+
+	BiggestHours := gojsonq.New().File(filename).Max("hours")
+
+	
+
+	fmt.Println(BiggestHours)*/
+
+	jq := gojsonq.New().File(filename)
+
+	top := jq.SortBy("hours", "desc").Only("activity","hours", "minutes")
+
+	b, err := json.MarshalIndent(top, "", "  ")
+	if err != nil {
+    	fmt.Println("error:", err)
+	}
+
+	fmt.Print(string(b))
+
+	// Press enter to go back to commandline
+	fmt.Println("\n---> Press enter to go back to commandline <---")
+	var command string
+	fmt.Scanln(&command)
+	Commandline()
+}
 
 
 // Save time
@@ -272,9 +308,6 @@ func Save_time(reader *bufio.Reader, elapsed time.Duration, id int, PauseTime in
 // Print commands
 func Print_commands(){
 
-
-	
-
 	PrintTimeleft()
 
 	// Get data from json
@@ -293,12 +326,11 @@ func Print_commands(){
 
 	
 	fmt.Println("\n=> Commands:")
+	fmt.Println("-> top or t")
 	fmt.Println("-> add or a")
 	fmt.Println("-> delete or del")
 	fmt.Println("-> quit or q")
-
-	fmt.Println()
-	fmt.Print("=> ")
+	fmt.Print("\n=> ")
 }
 
 // Delete activity
