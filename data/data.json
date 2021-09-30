@@ -4,7 +4,7 @@
     "activity": "asd",
     "short": "ss",
     "hours": 0,
-    "minutes": 0,
+    "minutes": 1,
     "function": "Default"
   },
   {
@@ -19,6 +19,14 @@
     "id": 2,
     "activity": "asd3",
     "short": "ff",
+    "hours": 0,
+    "minutes": 0,
+    "function": "Default"
+  },
+  {
+    "id": 3,
+    "activity": "veikko kiis",
+    "short": "kiios",
     "hours": 0,
     "minutes": 0,
     "function": "Default"

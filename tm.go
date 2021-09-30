@@ -69,7 +69,7 @@ func PrintTimeleft(){
 
 	
 	fmt.Printf("\n<================== VK TimeManager v%v ==================>\n", ProgramVersion)
-	fmt.Printf("\n<--- You have %v hours and %v minutes left --->\n\n", HoursLeft, MinutesLeft)
+	fmt.Printf("\n<--- You have %v hours and %v minutes left till 22:00 --->\n\n", HoursLeft, MinutesLeft)
 }
 
 // Command line
@@ -149,64 +149,107 @@ func MainSwitch(command string, data []JsonData, reader *bufio.Reader){
 			} else {
 				ClearScreen()
 				start := time.Now()
-				Loop_for_answer(reader, start, value.Activity, value.Id)	
+				StartActivity(reader, start, value.Activity, value.Id)	
 			}
 		}
 	}
 }
 
 // The loop
-func Loop_for_answer(reader *bufio.Reader, start time.Time, Activity string, id int){
+func StartActivity(reader *bufio.Reader, start time.Time, Activity string, id int){
 
 	// Get data from json
 	data := OpenAndGetDataFromJson()
 
-
+	// Get hours and minutes from json
 	hours := data[id].Hours
 	minutes := data[id].Minutes
-
+	
+	// Tell user about started activity
 	fmt.Println()
-	fmt.Printf("<--- Starting %v at %v [%v hours %v minutes] --->\n", Activity, start.Format("02.01.2006 15:04:05"), hours, minutes)
-	
+	fmt.Printf("<--- Starting %v at %v --->\n", Activity, start.Format("02.01.2006 15:04:05"))
+	fmt.Printf("\n---> Total time spent on this activity: %v hours %v minutes\n", hours, minutes )
 
-
-	
-	
+	// Loop for input	
 	loop := true
+
+	// Pause print
+	pausePrintCommands := false
+
+	// Define Pause time
+	PauseTime := 0
 
 	for loop {
 		
-		fmt.Println("\nType 'done' or '0' or 'q'")
-		fmt.Print("=>  ")
+		// Print main commands
+		if !pausePrintCommands {
+			fmt.Println("\n--> Type 'done' or '0' or 'q' to end <--")
+			fmt.Println("--> Type 'pause', 'p' or '+' to pause <--")
+		} 
 
-		input := Get_input(reader)
+		// Commandline
+		fmt.Print("\n=>  ")
 
-		chk := "done" == input || "0" == input || "q" == input
+		// Get input from user
+		command := Get_input(reader)
 
+		// Elapsed time since activity start
 		elapsed := time.Since(start)
 
-		if chk {
-			//elapsed := time.Since(start)
 
+		switch command {
+		case "done", "0", "q":
+
+			// Tell user about elapsed time
 			fmt.Printf("You have spent %v", elapsed)
 			fmt.Println()
-			
 
 			// Ask for save time
-			Save_time(reader, elapsed, id)
+			Save_time(reader, elapsed, id, PauseTime)
 
+			// End loop
 			loop = false
-		} 
-		ClearScreen()
-		fmt.Printf("---> Time: %v <---", elapsed)
-		fmt.Println()
 
+		case "pause", "p", "+":
+			
+			// Tell user that this activity is paused
+			fmt.Printf("\n--> %v Paused! Press any key to continue! <--", Activity)
+
+			// Print pause commands
+			pausePrintCommands = true
+
+			// Time now
+			startPause := time.Now()
+
+			// Wait for pressing any key or enter
+			var command string
+			fmt.Scanln(&command)
+
+			// Elapsed pause time
+			elapsedPause := time.Since(startPause)
+
+			// Add minutes to pause time
+			PauseTime += int(math.Round(elapsedPause.Minutes()))
+
+			// Tell user about Unpause
+			fmt.Println("--> Unpaused <--")
+
+			// Print default commands
+			pausePrintCommands = false
+			
+			
+		default:
+			ClearScreen()
+			fmt.Printf("---> Time: %v <---\n", elapsed)		
+		}
 		
 	}
 }
 
+
+
 // Save time
-func Save_time(reader *bufio.Reader, elapsed time.Duration, id int){
+func Save_time(reader *bufio.Reader, elapsed time.Duration, id int, PauseTime int){
 	
 	// Save
 	fmt.Println("Do you want to save the time? (Press enter or type no)")
@@ -221,7 +264,7 @@ func Save_time(reader *bufio.Reader, elapsed time.Duration, id int){
 		Commandline()
 	} else {
 		fmt.Println("===>> Last Time has been SAVED <<===")
-		UpdateJsonFile(elapsed, id)
+		UpdateJsonFile(elapsed, id, PauseTime)
 		Commandline()
 	}
 }
@@ -242,13 +285,14 @@ func Print_commands(){
 		fmt.Println("<--- WARNING: No data in database --->")
 	} else {
 		// Print info
+		fmt.Println("=> What do you want to do now?")
 		for _, component := range data {
 			fmt.Printf("-> [%vh:%vm] %v || %v (%v) \n", component.Hours, component.Minutes, component.Activity, component.Short, component.Id)		
 		}		
 	}
 
 	
-	fmt.Println()
+	fmt.Println("\n=> Commands:")
 	fmt.Println("-> add or a")
 	fmt.Println("-> delete or del")
 	fmt.Println("-> quit or q")
@@ -290,7 +334,7 @@ func DeleteActivity(){
 }
 
 // Save time function
-func UpdateJsonFile(elapsed time.Duration, id int){
+func UpdateJsonFile(elapsed time.Duration, id int, PauseTime int){
 	// Get data from json
 	data := OpenAndGetDataFromJson()
 
@@ -306,6 +350,11 @@ func UpdateJsonFile(elapsed time.Duration, id int){
 
 	//Old + new Minutes
 	NewMinutes := int(float64(data[id].Minutes) + math.Round(elapsed.Minutes()))
+
+	// Remove PauseTime minutes
+	if PauseTime > 0 {
+		NewMinutes -= PauseTime
+	}
 
 	// Get hours out of all minutes
 	GetHours := NewMinutes/60
