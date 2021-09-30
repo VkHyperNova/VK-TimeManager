@@ -22,7 +22,7 @@ type JsonData struct {
 	Function   	string `json:"function"`
 	
 }
-var ProgramVersion = "1.16" // Update version [16 updates]
+var ProgramVersion = "1.18" // Update version [16 updates]
 var filename = "data/data.json"
  
 //go:generate goversioninfo -icon=resource/timem.ico -manifest=resource/goversioninfo.exe.manifest
