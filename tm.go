@@ -22,7 +22,7 @@ type JsonData struct {
 	Function   	string `json:"function"`
 	
 }
-var ProgramVersion = "1.18" // Update version [16 updates]
+var ProgramVersion = "1.19" // Update version [16 updates]
 var filename = "data/data.json"
  
 //go:generate goversioninfo -icon=resource/timem.ico -manifest=resource/goversioninfo.exe.manifest
@@ -176,7 +176,7 @@ func StartActivity(reader *bufio.Reader, start time.Time, Activity string, id in
 	// Tell user about started activity
 	fmt.Println()
 	fmt.Printf("<--- Starting %v at %v --->\n", Activity, start.Format("02.01.2006 15:04:05"))
-	fmt.Printf("\n---> Total time spent on this activity: %v hours %v minutes\n", hours, minutes )
+	fmt.Printf("\n<--- Total time spent on this activity: %v hours %v minutes --->\n", hours, minutes )
 
 	// Loop for input	
 	loop := true
@@ -191,7 +191,8 @@ func StartActivity(reader *bufio.Reader, start time.Time, Activity string, id in
 		
 		// Print main commands
 		if !pausePrintCommands {
-			fmt.Println("\n--> Type 'done' or '0' or 'q' to end <--")
+			fmt.Println("\n--> Press enter to see elapsed time! <--")
+			fmt.Println("--> Type 'done' or '0' or 'q' to end <--")
 			fmt.Println("--> Type 'pause', 'p' or '+' to pause <--")
 		} 
 
@@ -203,7 +204,6 @@ func StartActivity(reader *bufio.Reader, start time.Time, Activity string, id in
 
 		// Elapsed time since activity start
 		elapsed := time.Since(start)
-
 
 		switch command {
 		case "done", "0", "q":
@@ -248,7 +248,7 @@ func StartActivity(reader *bufio.Reader, start time.Time, Activity string, id in
 			
 		default:
 			ClearScreen()
-			fmt.Printf("---> Time: %v <---\n", elapsed)		
+			fmt.Printf("---> (%v) Elapsed Time: %v since start [%v] <---\n", Activity, elapsed, start.Format("15:04:05"))		
 		}
 		
 	}
@@ -256,14 +256,6 @@ func StartActivity(reader *bufio.Reader, start time.Time, Activity string, id in
 
 // Top activities
 func topActivities(data []JsonData){
-
-	/*Order := []string{}
-
-	BiggestHours := gojsonq.New().File(filename).Max("hours")
-
-	
-
-	fmt.Println(BiggestHours)*/
 
 	jq := gojsonq.New().File(filename)
 
