@@ -75,8 +75,6 @@ func PrintTimeleft(){
 // Command line
 func Commandline(){
 
-
-
 	// Print commands to console
 	Print_commands()
 
@@ -95,7 +93,6 @@ func Commandline(){
 
 	}	
 }
-
 
 // Add default commands to data temporarly
 func AddDefaultCommands() []JsonData{
@@ -275,7 +272,6 @@ func topActivities(data []JsonData){
 	Commandline()
 }
 
-
 // Save time
 func Save_time(reader *bufio.Reader, elapsed time.Duration, id int, PauseTime int){
 	
@@ -318,10 +314,10 @@ func Print_commands(){
 
 	
 	fmt.Println("\n=> Commands:")
-	fmt.Println("-> top or t")
-	fmt.Println("-> add or a")
-	fmt.Println("-> delete or del")
-	fmt.Println("-> quit or q")
+	fmt.Println("-> 'top' or 't'")
+	fmt.Println("-> 'add' or 'a'")
+	fmt.Println("-> 'delete' or 'del'")
+	fmt.Println("-> 'quit' or 'q'")
 	fmt.Print("\n=> ")
 }
 
