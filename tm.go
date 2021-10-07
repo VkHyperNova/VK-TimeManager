@@ -237,7 +237,7 @@ func StartActivity(reader *bufio.Reader, start time.Time, Activity string, id in
 			PauseTime += int(math.Round(elapsedPause.Minutes()))
 
 			// Tell user about Unpause
-			fmt.Println("--> Unpaused <--")
+			fmt.Printf("--> Unpaused [Pausetime: %v] <--\n", elapsedPause)
 
 			// Print default commands
 			pausePrintCommands = false
