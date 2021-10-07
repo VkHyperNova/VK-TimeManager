@@ -1,56 +1,32 @@
 [
   {
     "id": 0,
-    "activity": "asd",
-    "short": "a",
-    "hours": 1,
+    "activity": "test0",
+    "short": "t0",
+    "hours": 0,
     "minutes": 0,
     "function": "Default"
   },
   {
     "id": 1,
-    "activity": "asd2",
-    "short": "ss",
-    "hours": 2,
-    "minutes": 16,
+    "activity": "test1",
+    "short": "t1",
+    "hours": 0,
+    "minutes": 0,
     "function": "Default"
   },
   {
     "id": 2,
-    "activity": "asd4",
-    "short": "ssss",
-    "hours": 4,
+    "activity": "test2",
+    "short": "t2",
+    "hours": 0,
     "minutes": 0,
     "function": "Default"
   },
   {
     "id": 3,
-    "activity": "asd3",
-    "short": "ssssssss",
-    "hours": 3,
-    "minutes": 0,
-    "function": "Default"
-  },
-  {
-    "id": 4,
-    "activity": "asd5",
-    "short": "gg",
-    "hours": 0,
-    "minutes": 0,
-    "function": "Default"
-  },
-  {
-    "id": 5,
-    "activity": "asd6",
-    "short": "rr",
-    "hours": 0,
-    "minutes": 0,
-    "function": "Default"
-  },
-  {
-    "id": 6,
-    "activity": "asd7",
-    "short": "aa",
+    "activity": "test3",
+    "short": "t3",
     "hours": 0,
     "minutes": 0,
     "function": "Default"
