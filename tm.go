@@ -122,8 +122,8 @@ func AddDefaultCommands() []JsonData{
 	DefaultCommands[3]["short"] = "del"
 
 	DefaultCommands[4] = map[string]string{}
-	DefaultCommands[4]["name"] = "quit"
-	DefaultCommands[4]["short"] = "q"
+	DefaultCommands[4]["name"] = "q"
+	DefaultCommands[4]["short"] = "00"
 
 	// Append to data 
 	for _, value := range DefaultCommands {
@@ -147,7 +147,7 @@ func MainSwitch(command string, data []JsonData, reader *bufio.Reader){
 				AddActivity()
 			} else if value.Function == "delete" {
 				DeleteActivity()
-			} else if value.Function == "quit" {
+			} else if value.Function == "q" {
 				quit()
 			} else if value.Function == "top" {
 				topActivities(data)
@@ -317,7 +317,7 @@ func Print_commands(){
 	fmt.Println("-> 'top' or 't'")
 	fmt.Println("-> 'add' or 'a'")
 	fmt.Println("-> 'delete' or 'del'")
-	fmt.Println("-> 'quit' or 'q'")
+	fmt.Println("-> QUIT PROGRAM: 'q' or '00'")
 	fmt.Print("\n=> ")
 }
 
