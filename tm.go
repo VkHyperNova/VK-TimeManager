@@ -403,10 +403,12 @@ func AddActivity(){
 	questions := []string{"Activity name?","Activity short name?"}
 	Answers := []string{}
 	reader := bufio.NewReader(os.Stdin)
+
 	// Get data from json
 	data := OpenAndGetDataFromJson()
 
 	for _, value := range questions{
+		
 		// Defined a label named "loop" 
 		loop:
 		fmt.Println()
@@ -503,16 +505,15 @@ func AskForId() int {
 // Encrypt new data and construct a WebsiteData struct for adding it to json file
 func ConvertAnswersToJsonData(Activity_Name string, Activity_Name_short string, GetLastid bool, function string) JsonData {
 
-	// Declare variables
+	// ID is 0 if database is empty
 	Id := 0
 
+	// If db is not empty get last id + 1
 	if GetLastid {
 		Id = GetLastId(filename)
 	}
 
-	var ValuesToAdd JsonData
-
-	ValuesToAdd = JsonData{
+	ValuesToAdd := JsonData{
 		Id: Id,
 		Activity: Activity_Name,
 		Short: Activity_Name_short,
