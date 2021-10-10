@@ -414,10 +414,9 @@ func AddActivity(){
 		fmt.Println()
 		fmt.Println(value)
 		fmt.Print("=> ")
-		// Read the answer
-		readerAnswer, _ := reader.ReadString('\n')
-		// convert CRLF to LF
-		readerAnswer = strings.Replace(readerAnswer, "\r\n", "", -1)
+		
+
+		readerAnswer := Get_input(reader) 
 
 		for _, value := range data {
 
