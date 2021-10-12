@@ -1,34 +1,50 @@
 [
   {
     "id": 0,
-    "activity": "test1",
-    "short": "t1",
+    "activity": "Activity1",
+    "short": "act1",
     "hours": 0,
-    "minutes": 17,
+    "minutes": 2,
     "projects": [
       {
-        "name": "testss",
-        "tasks": []
-      },
-      {
-        "name": "asd",
+        "name": "Project1",
         "tasks": [
-          "asd",
-          "asd2",
-          "asd3"
+          "task1",
+          "task2",
+          "task3",
+          "ads"
         ]
       },
       {
-        "name": "asd2",
+        "name": "asdp2",
+        "tasks": [
+          "asdsadasdsad"
+        ]
+      }
+    ],
+    "function": "Default"
+  },
+  {
+    "id": 1,
+    "activity": "Activity2",
+    "short": "act2",
+    "hours": 0,
+    "minutes": 0,
+    "projects": [
+      {
+        "name": "p1",
         "tasks": []
       },
       {
-        "name": "asd3",
+        "name": "p2",
         "tasks": []
       },
       {
-        "name": "asd1",
-        "tasks": []
+        "name": "p3",
+        "tasks": [
+          "task1",
+          "Task2"
+        ]
       }
     ],
     "function": "Default"

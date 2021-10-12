@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"strings"
 	"time"
+	"strconv"
 )
 
 type JsonData struct {
@@ -28,14 +29,17 @@ type Project struct {
 	Tasks []string `json:"tasks"`
 }
 
-var ProgramVersion = "1.19" // Update version [16 updates]
+var ProgramVersion = "1.21" // Update version [16 updates]
 var filename = "data/data.json"
 
 //go:generate goversioninfo -icon=resource/timem.ico -manifest=resource/goversioninfo.exe.manifest
 
 func main() {
 
+	// Create data.json file to save data if not exist
 	MakeDirAndJson()
+
+	// Start commandline
 	Commandline()
 }
 
@@ -60,7 +64,6 @@ func PrintTimeleft() {
 	if MinutesTillEndTime < 0 {
 		MinutesTillEndTime *= -1
 		MinutesTillEndTime += EndTime
-
 	}
 
 	// Get Hours left
@@ -69,6 +72,7 @@ func PrintTimeleft() {
 	// Get Minutes left
 	MinutesLeft := MinutesTillEndTime - (HoursLeft * 60)
 
+	// Print main info about programm
 	fmt.Printf("\n<================== VK TimeManager v%v ==================>\n", ProgramVersion)
 	fmt.Printf("\n<--- You have %v hours and %v minutes left till 22:00 --->\n\n", HoursLeft, MinutesLeft)
 }
@@ -82,6 +86,7 @@ func Commandline() {
 	// Add default commands to data
 	data := AddDefaultCommands()
 
+	// Get reader
 	reader := bufio.NewReader(os.Stdin)
 
 	for true {
@@ -96,14 +101,12 @@ func Commandline() {
 
 // Add default commands to data temporarly
 func AddDefaultCommands() []JsonData {
+
 	// Get data from json
 	data := OpenAndGetDataFromJson()
 
-	GetId := false
-
-	if len(data) != 0 {
-		GetId = true
-	}
+	// If db contains data then get a new id
+	GetId := CheckDBForData(data)
 
 	// Make map of maps
 	DefaultCommands := make(map[int]map[string]string)
@@ -129,7 +132,6 @@ func AddDefaultCommands() []JsonData {
 	for _, value := range DefaultCommands {
 		NewValues := ConvertAnswersToJsonData(value["name"], value["short"], GetId, value["name"])
 		data = append(data, NewValues)
-
 	}
 
 	return data
@@ -173,7 +175,7 @@ func StartActivity(reader *bufio.Reader, start time.Time, Activity string, id in
 	fmt.Println()
 	fmt.Printf("<--- Starting %v at %v --->\n", Activity, start.Format("02.01.2006 15:04:05"))
 	fmt.Printf("\n<--- Total time spent on this activity: %v hours %v minutes --->\n", hours, minutes)
-	fmt.Println("\nMy Projects:", len(data[id].Projects))
+	fmt.Println("\nNr of Projects:", len(data[id].Projects))
 
 	// Loop for input
 	loop := true
@@ -188,11 +190,12 @@ func StartActivity(reader *bufio.Reader, start time.Time, Activity string, id in
 
 		// Print main commands
 		if !pausePrintCommands {
-			fmt.Println("\n--> Press enter to see elapsed time! <--")
-			fmt.Println("--> Type 'add' or 'a' to add a project <--")
-			fmt.Println("--> Type 'projects' or 'p' to see projects <--")
-			fmt.Println("--> Type 'done' or '0' or 'q' to end <--")
-			fmt.Println("--> Type 'pause' or '+' to pause <--")
+			fmt.Println("\n--> (Press enter to see elapsed time!)")
+			fmt.Println("--> (Type 'add' or 'a' to add a project)")
+			fmt.Println("--> (Type 'projects' or 'p' to see projects)")
+			fmt.Println("--> (Type 'select' or 's' to select a project)")
+			fmt.Println("--> (Type 'done' or '0' or 'q' to end)")
+			fmt.Println("--> (Type 'pause' or '+' to pause)")
 		}
 
 		// Commandline
@@ -206,11 +209,15 @@ func StartActivity(reader *bufio.Reader, start time.Time, Activity string, id in
 
 		switch command {
 		case "add", "a":
-			AddNewProject(reader, id)
+			AddNewProject(id)
+
 		case "projects", "p":
-			for key, value := range data[id].Projects {
-				fmt.Printf("%v: %v (%v)\n",key + 1, value.Name, len(value.Tasks))
-			}
+			PrintProjects(id)
+
+		case "select", "s":
+			pausePrintCommands = true
+			SelectIdAndAddTask(id, start, Activity)
+			pausePrintCommands = false
 
 		case "done", "0", "q":
 
@@ -259,11 +266,127 @@ func StartActivity(reader *bufio.Reader, start time.Time, Activity string, id in
 	}
 }
 
+// Add task to project
+func SelectIdAndAddTask(id int, start time.Time, Activity string) {
+
+	// Bookmark
+	loop:
+
+	// Get reader
+	reader := bufio.NewReader(os.Stdin)
+
+	// Ask for id
+	ProjectId := AskForId()
+
+	// Get data from json
+	data := OpenAndGetDataFromJson()
+
+	// Save maximum id
+	MaxID := len(data[id].Projects) - 1
+
+	// Error if id is bigger than MaxID or negative
+	if ProjectId > MaxID {
+
+		// ERROR message
+		fmt.Printf("ERROR: Max id is (%v)\n", MaxID)
+
+		// Go to bookmark
+		goto loop
+
+	} else if ProjectId < 0 {
+
+		// ERROR message
+		fmt.Println("ERROR: id cant be negative!")
+
+		// Go to bookmark
+		goto loop
+	}
+
+	// Find project name by projectid
+	CurrentProject := data[id].Projects[ProjectId]
+
+	// Save project name
+	pName := CurrentProject.Name
+
+	// Print project name
+	fmt.Println("\n=> Project:", pName)
+
+	// Print add task commands
+	PrintAddTaskCommands()
+
+	loop2 := true
+
+	for loop2 {
+
+		// Get input from user
+		command := Get_input(reader)
+
+		// Elapsed time since activity start
+		elapsed := time.Since(start)
+
+		//fmt.Printf("1=> ")
+		switch command {
+		case "back", "b":
+			loop2 = false
+		case "add", "a":
+			AddTask(pName, ProjectId, id)
+		default:
+			ClearScreen()
+			fmt.Printf("---> (%v) Elapsed Time: %v since start [%v] <---\n", Activity, elapsed, start.Format("15:04:05"))
+			PrintAddTaskCommands()
+
+		}
+	}
+}
+
+// Add task
+func AddTask(pName string, SelectedIdint int, id int) {
+
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Println("\nUpdate or Task name?")
+	fmt.Printf("=> ")
+
+	// Save answer
+	tName := Get_input(reader)
+
+	// Get data from json
+	data := OpenAndGetDataFromJson()
+
+	// Empty slice for tasks
+	var tasks []string
+
+	// Take old tasks and add to tasks slice
+	for key, value := range data[id].Projects {
+		if key == SelectedIdint {
+			tasks = value.Tasks
+		}
+	}
+
+	// Append new task to tasks slice
+	tasks = append(tasks, tName)
+
+	// Append new tasks slice to data.json
+	data[id].Projects[SelectedIdint] = Project{Name: pName, Tasks: tasks}
+
+	// Convert it back to byte
+	dataBytes := MarshalIndentToByte(data, "UpdateItem")
+
+	// Override json file with updated data
+	WriteToFile(dataBytes)
+
+	// Print about successful operation
+	fmt.Printf("\n--->> Task %v added to project %v! <<---\n", tName, pName)
+	PrintAddTaskCommands()
+}
+
 // Add new Project
-func AddNewProject(reader *bufio.Reader, id int) {
+func AddNewProject(id int) {
 
 	// Bookmark
 loop:
+
+	// Get reader
+	reader := bufio.NewReader(os.Stdin)
 
 	// Ask for project name
 	fmt.Println("Project name?")
@@ -275,6 +398,7 @@ loop:
 	// Get data from json
 	data := OpenAndGetDataFromJson()
 
+	// Check if project name already exist in db
 	for _, value := range data {
 		for _, v := range value.Projects {
 			switch pName {
@@ -289,10 +413,10 @@ loop:
 	}
 
 	// Init new project
-	project1 := Project{pName, []string{}}
+	NewProject := Project{pName, []string{}}
 
 	// Append new project to db
-	data[id].Projects = append(data[id].Projects, project1)
+	data[id].Projects = append(data[id].Projects, NewProject)
 
 	// Convert it back to byte
 	dataBytes := MarshalIndentToByte(data, "UpdateItem")
@@ -303,44 +427,64 @@ loop:
 	fmt.Printf("\n--->> Project %v added to db! <<---\n", pName)
 }
 
-// Top activities
+// Get Top activities
 func topActivities(data []JsonData) {
 
+	// Select file
 	jq := gojsonq.New().File(filename)
 
+	// Sort by activity, hours and minutes
 	top := jq.SortBy("hours", "desc").Only("activity", "hours", "minutes")
 
+	// Pretty print
 	b, err := json.MarshalIndent(top, "", "  ")
-	if err != nil {
-		fmt.Println("error:", err)
-	}
 
+	// Print error if any
+	ErrorHandling(err, "topActivities func")
+
+	// Print activities
 	fmt.Print(string(b))
 
 	// Press enter to go back to commandline
-	fmt.Println("\n---> Press enter to go back to commandline <---")
+	fmt.Println("\n====> PRESS ENTER TO GO BACK TO COMMANDLINE <====")
+
+	// Check if enter is pressed
 	var command string
 	fmt.Scanln(&command)
+
+	// Start commandline
 	Commandline()
 }
 
 // Save time
 func Save_time(reader *bufio.Reader, elapsed time.Duration, id int, PauseTime int) {
 
-	// Save
+	// Print save message
 	fmt.Println("Do you want to save the time? (Press enter or type no)")
 	fmt.Print("=>  ")
 
+	// Save input
 	input := Get_input(reader)
 
+	// Check if 'no' is entered
 	check := "no" == input
 
 	if check {
+
+		// If 'no' is entered tell the user
 		fmt.Println("===>> Last Time NOT SAVED <<===")
+
+		// Return to commandline
 		Commandline()
 	} else {
+
+		// Tell the user about saving the time
 		fmt.Println("===>> Last Time has been SAVED <<===")
+
+		// Save time to db
 		UpdateJsonFile(elapsed, id, PauseTime)
+
+		// Return to commandline
 		Commandline()
 	}
 }
@@ -348,26 +492,33 @@ func Save_time(reader *bufio.Reader, elapsed time.Duration, id int, PauseTime in
 // Print commands
 func Print_commands() {
 
+	// Print how much time is left till 22:00
 	PrintTimeleft()
 
 	// Get data from json
 	data := OpenAndGetDataFromJson()
 
 	if len(data) == 0 {
+
+		// Warn if db is empty
 		fmt.Println("<--- WARNING: No data in database --->")
 	} else {
-		// Print info
+
+		// Print question
 		fmt.Println("=> What do you want to do now?")
+
+		// Print all activities
 		for _, component := range data {
 			fmt.Printf("-> [%vh:%vm] %v || %v (%v) \n", component.Hours, component.Minutes, component.Activity, component.Short, component.Id)
 		}
 	}
 
+	// Add main commands
 	fmt.Println("\n=> Commands:")
-	fmt.Println("-> 'top' or 't'")
-	fmt.Println("-> 'add' or 'a'")
-	fmt.Println("-> 'delete' or 'del'")
-	fmt.Println("-> QUIT PROGRAM: 'q' or '00'")
+	fmt.Println("-> ('top' or 't')")
+	fmt.Println("-> ('add' or 'a')")
+	fmt.Println("-> ('delete' or 'del')")
+	fmt.Println("-> (QUIT PROGRAM: 'q' or '00')")
 	fmt.Print("\n=> ")
 }
 
@@ -400,6 +551,7 @@ func DeleteActivity() {
 	// Override json file with updated data
 	WriteToFile(dataBytes)
 
+	// Return to commandline
 	Commandline()
 }
 
@@ -413,7 +565,11 @@ func UpdateJsonFile(elapsed time.Duration, id int, PauseTime int) {
 
 	// Check if index exist
 	if index == -1 {
+
+		// Tell the user that index does not exist
 		fmt.Println("--> ID:", id, "not found!")
+
+		// Return to commandline
 		Commandline()
 	}
 
@@ -431,12 +587,16 @@ func UpdateJsonFile(elapsed time.Duration, id int, PauseTime int) {
 	// Remove hours and get minutes left
 	GetMinutes := NewMinutes - (GetHours * 60)
 
-	// Add new data
+	// Add new hours
 	HoursToAdd := data[id].Hours + GetHours
+
+	// Add new minutes
 	MinutesToAdd := GetMinutes
 
-	// Add new time to db
+	// Add new minutes to db
 	data[id].Minutes = MinutesToAdd
+
+	// Add new hours to db
 	data[id].Hours = HoursToAdd
 
 	// Convert it back to byte
@@ -449,8 +609,13 @@ func UpdateJsonFile(elapsed time.Duration, id int, PauseTime int) {
 // Add new activity to json file
 func AddActivity() {
 
+	// Questions array
 	questions := []string{"Activity name?", "Activity short name?"}
+
+	// Store answers
 	Answers := []string{}
+
+	// Get reader
 	reader := bufio.NewReader(os.Stdin)
 
 	// Get data from json
@@ -458,14 +623,17 @@ func AddActivity() {
 
 	for _, value := range questions {
 
-		// Defined a label named "loop"
+		// Bookmark
 	loop:
+	
 		fmt.Println()
 		fmt.Println(value)
 		fmt.Print("=> ")
 
+		// Get answer
 		readerAnswer := Get_input(reader)
 
+		// Check if name already exist in db
 		for _, value := range data {
 
 			switch readerAnswer {
@@ -478,15 +646,13 @@ func AddActivity() {
 
 		}
 
+		// Add answer to answer array
 		Answers = append(Answers, readerAnswer)
 
 	}
 
-	GetId := false
-
-	if len(data) != 0 {
-		GetId = true
-	}
+	// If db contains data then get a new id
+	GetId := CheckDBForData(data)
 
 	// Convert to JsonData
 	NewValues := ConvertAnswersToJsonData(Answers[0], Answers[1], GetId, "Default")
@@ -508,6 +674,40 @@ func AddActivity() {
 }
 
 /*<=================================================== Small Help functions ===================================================>*/
+
+// Check db for data and return bool
+func CheckDBForData(data []JsonData) bool {
+	// Dont get id if db is empty
+	GetId := false
+
+	// Get id if db is not empty
+	if len(data) != 0 {
+		GetId = true
+	}
+
+	return GetId
+}
+
+// Print add tasks commands
+func PrintAddTaskCommands(){
+	fmt.Println("\n---> (Type 'add' or 'a' to add task)")
+	fmt.Println("---> (Type 'back' or 'b' to leave project)")
+	fmt.Printf("=> ")
+}
+
+// Print projects
+func PrintProjects(id int) {
+
+	// Get data from json
+	data := OpenAndGetDataFromJson()
+
+	fmt.Println("\n=> My Projects:")
+
+	// Print all projects id --> name --> tasks
+	for key, value := range data[id].Projects {
+		fmt.Printf("=> [%v] -> '%v' -> (%v)\n", key, value.Name, len(value.Tasks))
+	}
+}
 
 // Open and get data
 func OpenAndGetDataFromJson() []JsonData {
@@ -537,11 +737,33 @@ func MakeDirAndJson() {
 
 // Ask for id
 func AskForId() int {
-	fmt.Print("--> ID: ")
-	var ID int
-	fmt.Scanln(&ID)
 
-	return ID
+	// Bookmark
+	loop:
+
+	// Ask for id
+	fmt.Print("--> ID: ")
+
+	// Get reader
+	reader := bufio.NewReader(os.Stdin)
+
+	// Get input as string
+	GetIdString := Get_input(reader)
+
+	// Convert string to int
+	GetId, err := strconv.Atoi(GetIdString)
+
+	// ERROR if a string or a negative number is entered
+	if err != nil {
+
+		// Error message
+		fmt.Println("ERROR: ID must be a positive number!")
+
+		// Go back and ask again
+		goto loop
+	}
+	
+	return GetId
 }
 
 // Encrypt new data and construct a WebsiteData struct for adding it to json file
