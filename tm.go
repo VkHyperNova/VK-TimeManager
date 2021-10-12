@@ -29,7 +29,7 @@ type Project struct {
 	Tasks []string `json:"tasks"`
 }
 
-var ProgramVersion = "1.21" // Update version [16 updates]
+var ProgramVersion = "1.25" // Update version [16 updates]
 var filename = "data/data.json"
 
 //go:generate goversioninfo -icon=resource/timem.ico -manifest=resource/goversioninfo.exe.manifest
