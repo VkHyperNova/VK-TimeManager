@@ -9,9 +9,9 @@ import (
 	"math"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
-	"strconv"
 )
 
 type JsonData struct {
@@ -175,7 +175,7 @@ func StartActivity(reader *bufio.Reader, start time.Time, Activity string, id in
 	fmt.Println()
 	fmt.Printf("<--- Starting %v at %v --->\n", Activity, start.Format("02.01.2006 15:04:05"))
 	fmt.Printf("\n<--- Total time spent on this activity: %v hours %v minutes --->\n", hours, minutes)
-	fmt.Println("\nNr of Projects:", len(data[id].Projects))
+	fmt.Println("\n=>> Nr of Projects:", len(data[id].Projects))
 
 	// Loop for input
 	loop := true
@@ -192,6 +192,7 @@ func StartActivity(reader *bufio.Reader, start time.Time, Activity string, id in
 		if !pausePrintCommands {
 			fmt.Println("\n--> (Press enter to see elapsed time!)")
 			fmt.Println("--> (Type 'add' or 'a' to add a project)")
+			fmt.Println("--> (Type 'delete', 'del' or 'd' to delete a project)")
 			fmt.Println("--> (Type 'projects' or 'p' to see projects)")
 			fmt.Println("--> (Type 'select' or 's' to select a project)")
 			fmt.Println("--> (Type 'done' or '0' or 'q' to end)")
@@ -209,14 +210,25 @@ func StartActivity(reader *bufio.Reader, start time.Time, Activity string, id in
 
 		switch command {
 		case "add", "a":
+			// Add new project
 			AddNewProject(id)
 
+		case "del", "d", "delete":
+			// Delete project
+			DeleteProject(id)
+
 		case "projects", "p":
+			// Print all projects
 			PrintProjects(id)
 
 		case "select", "s":
+			// Dont print commands
 			pausePrintCommands = true
+
+			// Select project
 			SelectIdAndAddTask(id, start, Activity)
+
+			// Resume printing commands
 			pausePrintCommands = false
 
 		case "done", "0", "q":
@@ -266,11 +278,97 @@ func StartActivity(reader *bufio.Reader, start time.Time, Activity string, id in
 	}
 }
 
+// Print tasks
+func ShowTasks(id int, projectid int) {
+	// Get data from json
+	data := OpenAndGetDataFromJson()
+
+	// Save Project name and tasks
+	project := data[id].Projects[projectid]
+
+	// Print all tasks with id's
+	for key, value := range project.Tasks {
+		fmt.Printf("\nid: (%v) task: '%v'", key, value)
+	}
+
+	// Print commands
+	fmt.Println()
+	PrintAddTaskCommands()
+}
+
+// Delete Task
+func DeleteTask(id int, projectid int) {
+	// Ask and save id
+	index := AskForId()
+
+	// Get data from json
+	data := OpenAndGetDataFromJson()
+
+	// Project details
+	project := data[id].Projects[projectid]
+
+	// Ask before delete
+	check := DeleteCheckQuestion(project.Tasks[index])
+
+	if !check {
+		// Delete
+		data[id].Projects[projectid].Tasks = append(data[id].Projects[projectid].Tasks[:index], data[id].Projects[projectid].Tasks[index+1:]...)
+
+		// Convert it back to byte
+		dataBytes := MarshalIndentToByte(data, "DeleteItem")
+
+		// Override json file with updated data
+		WriteToFile(dataBytes)
+
+		fmt.Printf("\nProject %v has been deleted!\n", project.Name)
+
+		// Print commands
+		fmt.Println()
+		PrintAddTaskCommands()
+
+	} else {
+		// Print commands
+		fmt.Println()
+		PrintAddTaskCommands()
+	}
+}
+
+// Delete Project
+func DeleteProject(id int) {
+
+	// Ask and save id
+	index := AskForId()
+
+	// Get data from json
+	data := OpenAndGetDataFromJson()
+
+	// Project details
+	project := data[id].Projects[index]
+
+	// Ask before delete
+	check := DeleteCheckQuestion(project.Name)
+
+	// If check is false delete item
+	if !check {
+		// Delete
+		data[id].Projects = append(data[id].Projects[:index], data[id].Projects[index+1:]...)
+
+		// Convert it back to byte
+		dataBytes := MarshalIndentToByte(data, "DeleteItem")
+
+		// Override json file with updated data
+		WriteToFile(dataBytes)
+
+		fmt.Printf("\nProject %v has been deleted!\n", project.Name)
+
+	}
+}
+
 // Add task to project
 func SelectIdAndAddTask(id int, start time.Time, Activity string) {
 
 	// Bookmark
-	loop:
+loop:
 
 	// Get reader
 	reader := bufio.NewReader(os.Stdin)
@@ -330,6 +428,10 @@ func SelectIdAndAddTask(id int, start time.Time, Activity string) {
 			loop2 = false
 		case "add", "a":
 			AddTask(pName, ProjectId, id)
+		case "delete", "del", "d":
+			DeleteTask(id, ProjectId)
+		case "show", "s":
+			ShowTasks(id, ProjectId)
 		default:
 			ClearScreen()
 			fmt.Printf("---> (%v) Elapsed Time: %v since start [%v] <---\n", Activity, elapsed, start.Format("15:04:05"))
@@ -337,6 +439,26 @@ func SelectIdAndAddTask(id int, start time.Time, Activity string) {
 
 		}
 	}
+}
+
+// Ask before delete
+func DeleteCheckQuestion(name string) bool{
+
+	if name != "" {
+		fmt.Printf("\nDo you really want to delete '%v' ???\n", name)
+	}
+	
+
+	// Get reader
+	reader := bufio.NewReader(os.Stdin)
+
+	// Get input
+	input := Get_input(reader)
+
+	// Check if 'no' is entered
+	check := "no" == input
+
+	return check
 }
 
 // Add task
@@ -463,11 +585,8 @@ func Save_time(reader *bufio.Reader, elapsed time.Duration, id int, PauseTime in
 	fmt.Println("Do you want to save the time? (Press enter or type no)")
 	fmt.Print("=>  ")
 
-	// Save input
-	input := Get_input(reader)
-
-	// Check if 'no' is entered
-	check := "no" == input
+	// Ask before delete
+	check := DeleteCheckQuestion("")
 
 	if check {
 
@@ -524,7 +643,7 @@ func Print_commands() {
 
 // Delete activity
 func DeleteActivity() {
-	// AskAndStoreQuestions for id
+	// Ask for id
 	id := AskForId()
 
 	// Clear the screen
@@ -538,7 +657,10 @@ func DeleteActivity() {
 
 	// Check if index exist
 	if index == -1 {
+
 		fmt.Println("--> ID:", id, "not found!")
+
+		// Return to commandline
 		Commandline()
 	}
 
@@ -625,7 +747,7 @@ func AddActivity() {
 
 		// Bookmark
 	loop:
-	
+
 		fmt.Println()
 		fmt.Println(value)
 		fmt.Print("=> ")
@@ -689,8 +811,10 @@ func CheckDBForData(data []JsonData) bool {
 }
 
 // Print add tasks commands
-func PrintAddTaskCommands(){
+func PrintAddTaskCommands() {
 	fmt.Println("\n---> (Type 'add' or 'a' to add task)")
+	fmt.Println("---> (Type 'delete', 'del' or 'd' to delete task)")
+	fmt.Println("---> (Type 'show' or 's' to print all tasks)")
 	fmt.Println("---> (Type 'back' or 'b' to leave project)")
 	fmt.Printf("=> ")
 }
@@ -705,7 +829,7 @@ func PrintProjects(id int) {
 
 	// Print all projects id --> name --> tasks
 	for key, value := range data[id].Projects {
-		fmt.Printf("=> [%v] -> '%v' -> (%v)\n", key, value.Name, len(value.Tasks))
+		fmt.Printf("=> [id: %v] -> '%v' -> (%v)\n", key, value.Name, len(value.Tasks))
 	}
 }
 
@@ -739,7 +863,7 @@ func MakeDirAndJson() {
 func AskForId() int {
 
 	// Bookmark
-	loop:
+loop:
 
 	// Ask for id
 	fmt.Print("--> ID: ")
@@ -762,7 +886,7 @@ func AskForId() int {
 		// Go back and ask again
 		goto loop
 	}
-	
+
 	return GetId
 }
 
