@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"github.com/thedevsaddam/gojsonq"
 	"io/ioutil"
 	"math"
 	"os"
@@ -12,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"github.com/TwiN/go-color"
+	"github.com/thedevsaddam/gojsonq"
 )
 
 type JsonData struct {
@@ -29,7 +30,7 @@ type Project struct {
 	Tasks []string `json:"tasks"`
 }
 
-var ProgramVersion = "1.25" // Update version [16 updates]
+var ProgramVersion = "1.26" // Update version [16 updates]
 var filename = "data/data.json"
 
 //go:generate goversioninfo -icon=resource/timem.ico -manifest=resource/goversioninfo.exe.manifest
@@ -73,8 +74,9 @@ func PrintTimeleft() {
 	MinutesLeft := MinutesTillEndTime - (HoursLeft * 60)
 
 	// Print main info about programm
-	fmt.Printf("\n<================== VK TimeManager v%v ==================>\n", ProgramVersion)
-	fmt.Printf("\n<--- You have %v hours and %v minutes left till 22:00 --->\n\n", HoursLeft, MinutesLeft)
+	fmt.Printf(color.Colorize(color.Green, "\n<================== VK TimeManager v%v ==================>\n"), ProgramVersion)
+	fmt.Printf(color.Colorize(color.Green, "\n<--- You have %v hours and %v minutes left till 22:00 --->\n\n"), HoursLeft, MinutesLeft)
+	
 }
 
 // Command line
@@ -173,9 +175,9 @@ func StartActivity(reader *bufio.Reader, start time.Time, Activity string, id in
 
 	// Tell user about started activity
 	fmt.Println()
-	fmt.Printf("<--- Starting %v at %v --->\n", Activity, start.Format("02.01.2006 15:04:05"))
-	fmt.Printf("\n<--- Total time spent on this activity: %v hours %v minutes --->\n", hours, minutes)
-	fmt.Println("\n=>> Nr of Projects:", len(data[id].Projects))
+	fmt.Printf(color.Colorize(color.Green, "<--- Starting %v at %v --->\n"), Activity, start.Format("02.01.2006 15:04:05"))
+	fmt.Printf(color.Colorize(color.Green, "\n<--- Total time spent on this activity: %v hours %v minutes --->\n"), hours, minutes)
+	fmt.Println(color.Colorize(color.Green, "\n=>> Nr of Projects:"), len(data[id].Projects))
 
 	// Loop for input
 	loop := true
@@ -190,17 +192,17 @@ func StartActivity(reader *bufio.Reader, start time.Time, Activity string, id in
 
 		// Print main commands
 		if !pausePrintCommands {
-			fmt.Println("\n--> (Press enter to see elapsed time!)")
-			fmt.Println("--> (Type 'add' or 'a' to add a project)")
-			fmt.Println("--> (Type 'delete', 'del' or 'd' to delete a project)")
-			fmt.Println("--> (Type 'projects' or 'p' to see projects)")
-			fmt.Println("--> (Type 'select' or 's' to select a project)")
-			fmt.Println("--> (Type 'done' or '0' or 'q' to end)")
-			fmt.Println("--> (Type 'pause' or '+' to pause)")
+			fmt.Println(color.Colorize(color.Green, "\n--> (Press enter to see elapsed time!)"))
+			fmt.Println(color.Colorize(color.Blue, "--> (Type 'add' or 'a' to add a project)"))
+			fmt.Println(color.Colorize(color.Blue, "--> (Type 'delete', 'del' or 'd' to delete a project)"))
+			fmt.Println(color.Colorize(color.Blue, "--> (Type 'projects' or 'p' to see projects)"))
+			fmt.Println(color.Colorize(color.Blue, "--> (Type 'select' or 's' to select a project)"))
+			fmt.Println(color.Colorize(color.Blue, "--> (Type 'done' or '0' or 'q' to end)"))
+			fmt.Println(color.Colorize(color.Blue, "--> (Type 'pause' or '+' to pause)"))
 		}
 
 		// Commandline
-		fmt.Print("\n=>  ")
+		fmt.Print(color.Colorize(color.Green, "\n=>  "))
 
 		// Get input from user
 		command := Get_input(reader)
@@ -234,7 +236,7 @@ func StartActivity(reader *bufio.Reader, start time.Time, Activity string, id in
 		case "done", "0", "q":
 
 			// Tell user about elapsed time
-			fmt.Printf("You have spent %v", elapsed)
+			fmt.Printf(color.Colorize(color.Green, "You have spent %v"), elapsed)
 			fmt.Println()
 
 			// Ask for save time
@@ -246,7 +248,7 @@ func StartActivity(reader *bufio.Reader, start time.Time, Activity string, id in
 		case "pause", "+":
 
 			// Tell user that this activity is paused
-			fmt.Printf("\n--> %v Paused! Press any key to continue! <--", Activity)
+			fmt.Printf(color.Colorize(color.Red, "\n--> %v Paused! Press any key to continue! <--"), Activity)
 
 			// Print pause commands
 			pausePrintCommands = true
@@ -265,14 +267,14 @@ func StartActivity(reader *bufio.Reader, start time.Time, Activity string, id in
 			PauseTime += int(math.Round(elapsedPause.Minutes()))
 
 			// Tell user about Unpause
-			fmt.Printf("--> Unpaused [Pausetime: %v] <--\n", elapsedPause)
+			fmt.Printf(color.Colorize(color.Green, "--> Unpaused [Pausetime: %v] <--\n"), elapsedPause)
 
 			// Print default commands
 			pausePrintCommands = false
 
 		default:
 			ClearScreen()
-			fmt.Printf("---> (%v) Elapsed Time: %v since start [%v] <---\n", Activity, elapsed, start.Format("15:04:05"))
+			fmt.Printf(color.Colorize(color.Green, "---> (%v) Elapsed Time: %v since start [%v] <---\n"), Activity, elapsed, start.Format("15:04:05"))
 		}
 
 	}
@@ -288,7 +290,7 @@ func ShowTasks(id int, projectid int) {
 
 	// Print all tasks with id's
 	for key, value := range project.Tasks {
-		fmt.Printf("\nid: (%v) task: '%v'", key, value)
+		fmt.Printf(color.Colorize(color.Purple, "\nid: (%v) task: '%v'"), key, value)
 	}
 
 	// Print commands
@@ -320,7 +322,7 @@ func DeleteTask(id int, projectid int) {
 		// Override json file with updated data
 		WriteToFile(dataBytes)
 
-		fmt.Printf("\nProject %v has been deleted!\n", project.Name)
+		fmt.Printf(color.Colorize(color.Red, "\nTask %v has been deleted!\n"), project.Name)
 
 		// Print commands
 		fmt.Println()
@@ -359,7 +361,7 @@ func DeleteProject(id int) {
 		// Override json file with updated data
 		WriteToFile(dataBytes)
 
-		fmt.Printf("\nProject %v has been deleted!\n", project.Name)
+		fmt.Printf(color.Colorize(color.Red, "\nProject %v has been deleted!\n"), project.Name)
 
 	}
 }
@@ -386,7 +388,7 @@ loop:
 	if ProjectId > MaxID {
 
 		// ERROR message
-		fmt.Printf("ERROR: Max id is (%v)\n", MaxID)
+		fmt.Printf(color.Colorize(color.Red, "ERROR: Max id is (%v)\n"), MaxID)
 
 		// Go to bookmark
 		goto loop
@@ -394,7 +396,7 @@ loop:
 	} else if ProjectId < 0 {
 
 		// ERROR message
-		fmt.Println("ERROR: id cant be negative!")
+		fmt.Println(color.Colorize(color.Red, "ERROR: id cant be negative!"))
 
 		// Go to bookmark
 		goto loop
@@ -407,7 +409,7 @@ loop:
 	pName := CurrentProject.Name
 
 	// Print project name
-	fmt.Println("\n=> Project:", pName)
+	fmt.Println(color.Colorize(color.Green, "\n=> Project:"), pName)
 
 	// Print add task commands
 	PrintAddTaskCommands()
@@ -434,7 +436,7 @@ loop:
 			ShowTasks(id, ProjectId)
 		default:
 			ClearScreen()
-			fmt.Printf("---> (%v) Elapsed Time: %v since start [%v] <---\n", Activity, elapsed, start.Format("15:04:05"))
+			fmt.Printf(color.Colorize(color.Green, "---> (%v) Elapsed Time: %v since start [%v] <---\n"), Activity, elapsed, start.Format("15:04:05"))
 			PrintAddTaskCommands()
 
 		}
@@ -445,7 +447,7 @@ loop:
 func DeleteCheckQuestion(name string) bool{
 
 	if name != "" {
-		fmt.Printf("\nDo you really want to delete '%v' ???\n", name)
+		fmt.Printf(color.Colorize(color.Red, "\nDo you really want to delete '%v' ???\n"), name)
 	}
 	
 
@@ -465,8 +467,8 @@ func DeleteCheckQuestion(name string) bool{
 func AddTask(pName string, SelectedIdint int, id int) {
 
 	reader := bufio.NewReader(os.Stdin)
-	fmt.Println("\nUpdate or Task name?")
-	fmt.Printf("=> ")
+	fmt.Println(color.Colorize(color.Green, "\nUpdate or Task name?"))
+	fmt.Printf(color.Colorize(color.Green, "=> "))
 
 	// Save answer
 	tName := Get_input(reader)
@@ -497,7 +499,7 @@ func AddTask(pName string, SelectedIdint int, id int) {
 	WriteToFile(dataBytes)
 
 	// Print about successful operation
-	fmt.Printf("\n--->> Task %v added to project %v! <<---\n", tName, pName)
+	fmt.Printf(color.Colorize(color.Red, "\n--->> Task %v added to project %v! <<---\n"), tName, pName)
 	PrintAddTaskCommands()
 }
 
@@ -511,8 +513,8 @@ loop:
 	reader := bufio.NewReader(os.Stdin)
 
 	// Ask for project name
-	fmt.Println("Project name?")
-	fmt.Printf("=> ")
+	fmt.Println(color.Colorize(color.Green, "Project name?"))
+	fmt.Printf(color.Colorize(color.Green, "=> "))
 
 	// Save answer
 	pName := Get_input(reader)
@@ -525,7 +527,7 @@ loop:
 		for _, v := range value.Projects {
 			switch pName {
 			case v.Name:
-				fmt.Printf("\nError: Project %v already exist in db\n", pName)
+				fmt.Printf(color.Colorize(color.Red, "\nError: Project %v already exist in db\n\n"), pName)
 
 				// Restart the for loop, go to back to loop label
 				goto loop
@@ -568,7 +570,7 @@ func topActivities(data []JsonData) {
 	fmt.Print(string(b))
 
 	// Press enter to go back to commandline
-	fmt.Println("\n====> PRESS ENTER TO GO BACK TO COMMANDLINE <====")
+	fmt.Println(color.Colorize(color.Green, "\n====> PRESS ENTER TO GO BACK TO COMMANDLINE <===="))
 
 	// Check if enter is pressed
 	var command string
@@ -582,8 +584,8 @@ func topActivities(data []JsonData) {
 func Save_time(reader *bufio.Reader, elapsed time.Duration, id int, PauseTime int) {
 
 	// Print save message
-	fmt.Println("Do you want to save the time? (Press enter or type no)")
-	fmt.Print("=>  ")
+	fmt.Println(color.Colorize(color.Green, "Do you want to save the time? (Press enter or type no)"))
+	fmt.Print(color.Colorize(color.Green, "=>  "))
 
 	// Ask before delete
 	check := DeleteCheckQuestion("")
@@ -591,14 +593,14 @@ func Save_time(reader *bufio.Reader, elapsed time.Duration, id int, PauseTime in
 	if check {
 
 		// If 'no' is entered tell the user
-		fmt.Println("===>> Last Time NOT SAVED <<===")
+		fmt.Println(color.Colorize(color.Red, "===>> Last Time NOT SAVED <<==="))
 
 		// Return to commandline
 		Commandline()
 	} else {
 
 		// Tell the user about saving the time
-		fmt.Println("===>> Last Time has been SAVED <<===")
+		fmt.Println(color.Colorize(color.Red, "===>> Last Time has been SAVED <<==="))
 
 		// Save time to db
 		UpdateJsonFile(elapsed, id, PauseTime)
@@ -620,25 +622,25 @@ func Print_commands() {
 	if len(data) == 0 {
 
 		// Warn if db is empty
-		fmt.Println("<--- WARNING: No data in database --->")
+		fmt.Println(color.Colorize(color.Red, "<--- WARNING: No data in database --->"))
 	} else {
 
 		// Print question
-		fmt.Println("=> What do you want to do now?")
+		fmt.Println(color.Colorize(color.Green, "=> What do you want to do now?"))
 
 		// Print all activities
 		for _, component := range data {
-			fmt.Printf("-> [%vh:%vm] %v || %v (%v) \n", component.Hours, component.Minutes, component.Activity, component.Short, component.Id)
+			fmt.Printf(color.Colorize(color.Yellow, "-> [%vh:%vm] %v || %v (%v) \n"), component.Hours, component.Minutes, component.Activity, component.Short, component.Id)
 		}
 	}
 
 	// Add main commands
-	fmt.Println("\n=> Commands:")
-	fmt.Println("-> ('top' or 't')")
-	fmt.Println("-> ('add' or 'a')")
-	fmt.Println("-> ('delete' or 'del')")
-	fmt.Println("-> (QUIT PROGRAM: 'q' or '00')")
-	fmt.Print("\n=> ")
+	fmt.Println(color.Colorize(color.Green, "\n=> Commands:"))
+	fmt.Println(color.Colorize(color.Yellow, "-> ('top' or 't')"))
+	fmt.Println(color.Colorize(color.Yellow, "-> ('add' or 'a')"))
+	fmt.Println(color.Colorize(color.Yellow, "-> ('delete' or 'del')"))
+	fmt.Println(color.Colorize(color.Yellow, "-> (QUIT PROGRAM: 'q' or '00')"))
+	fmt.Print(color.Colorize(color.Green, "\n=> "))
 }
 
 // Delete activity
@@ -658,7 +660,11 @@ func DeleteActivity() {
 	// Check if index exist
 	if index == -1 {
 
-		fmt.Println("--> ID:", id, "not found!")
+		fmt.Printf(color.Colorize(color.Red, "--> ID: %v not found!"), id)
+
+		// Wait for enter
+		var command string
+		fmt.Scanln(&command)
 
 		// Return to commandline
 		Commandline()
@@ -672,6 +678,13 @@ func DeleteActivity() {
 
 	// Override json file with updated data
 	WriteToFile(dataBytes)
+
+	// Tell about successful operation
+	fmt.Printf(color.Colorize(color.Red, "--> ID: %v Removed!"), id)
+
+	// Press enter to continue
+	var command string
+	fmt.Scanln(&command)
 
 	// Return to commandline
 	Commandline()
@@ -689,7 +702,7 @@ func UpdateJsonFile(elapsed time.Duration, id int, PauseTime int) {
 	if index == -1 {
 
 		// Tell the user that index does not exist
-		fmt.Println("--> ID:", id, "not found!")
+		fmt.Printf(color.Colorize(color.Red, "--> ID: %v not found!"), id)
 
 		// Return to commandline
 		Commandline()
@@ -749,8 +762,8 @@ func AddActivity() {
 	loop:
 
 		fmt.Println()
-		fmt.Println(value)
-		fmt.Print("=> ")
+		fmt.Println(color.Colorize(color.Green, value))
+		fmt.Print(color.Colorize(color.Green, "=> "))
 
 		// Get answer
 		readerAnswer := Get_input(reader)
@@ -760,7 +773,7 @@ func AddActivity() {
 
 			switch readerAnswer {
 			case value.Activity, value.Short, "delete", "del", "quit", "q", "add", "a":
-				fmt.Printf("Error: %v already exist in db\n", readerAnswer)
+				fmt.Printf(color.Colorize(color.Red, "Error: %v already exist in db\n"), readerAnswer)
 
 				// Restart the for loop, go to back to loop label
 				goto loop
@@ -812,11 +825,11 @@ func CheckDBForData(data []JsonData) bool {
 
 // Print add tasks commands
 func PrintAddTaskCommands() {
-	fmt.Println("\n---> (Type 'add' or 'a' to add task)")
-	fmt.Println("---> (Type 'delete', 'del' or 'd' to delete task)")
-	fmt.Println("---> (Type 'show' or 's' to print all tasks)")
-	fmt.Println("---> (Type 'back' or 'b' to leave project)")
-	fmt.Printf("=> ")
+	fmt.Println(color.Colorize(color.Cyan, "\n---> (Type 'add' or 'a' to add task)"))
+	fmt.Println(color.Colorize(color.Cyan, "---> (Type 'delete', 'del' or 'd' to delete task)"))
+	fmt.Println(color.Colorize(color.Cyan, "---> (Type 'show' or 's' to print all tasks)"))
+	fmt.Println(color.Colorize(color.Cyan, "---> (Type 'back' or 'b' to leave project)"))
+	fmt.Printf(color.Colorize(color.Green, "=> "))
 }
 
 // Print projects
@@ -825,11 +838,11 @@ func PrintProjects(id int) {
 	// Get data from json
 	data := OpenAndGetDataFromJson()
 
-	fmt.Println("\n=> My Projects:")
+	fmt.Println(color.Colorize(color.Green, "\n=> My Projects:"))
 
 	// Print all projects id --> name --> tasks
 	for key, value := range data[id].Projects {
-		fmt.Printf("=> [id: %v] -> '%v' -> (%v)\n", key, value.Name, len(value.Tasks))
+		fmt.Printf(color.Colorize(color.Purple, "=> [id: %v] -> '%v' -> (%v)\n"), key, value.Name, len(value.Tasks))
 	}
 }
 
@@ -866,7 +879,7 @@ func AskForId() int {
 loop:
 
 	// Ask for id
-	fmt.Print("--> ID: ")
+	fmt.Print(color.Colorize(color.Red, "--> ID: "))
 
 	// Get reader
 	reader := bufio.NewReader(os.Stdin)
@@ -881,7 +894,7 @@ loop:
 	if err != nil {
 
 		// Error message
-		fmt.Println("ERROR: ID must be a positive number!")
+		fmt.Println(color.Colorize(color.Red, "ERROR: ID must be a positive number!"))
 
 		// Go back and ask again
 		goto loop
@@ -991,7 +1004,7 @@ func ClearScreen() {
 // Handle Errors
 func ErrorHandling(err error, location string) {
 	if err != nil {
-		fmt.Println(location+":", err.Error())
+		fmt.Println(color.Colorize(color.Red, (location+":")), err.Error())
 	}
 }
 
