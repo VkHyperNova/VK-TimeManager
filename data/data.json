@@ -4,7 +4,7 @@
     "activity": "asd",
     "short": "s",
     "hours": 0,
-    "minutes": 0,
+    "minutes": 2,
     "projects": [
       {
         "name": "asd2",
@@ -14,7 +14,9 @@
         "name": "asd22",
         "tasks": [
           "sss",
-          "asddddd"
+          "asddddd",
+          "asdasdasd",
+          "sdasdasd"
         ]
       }
     ],
@@ -26,7 +28,12 @@
     "short": "",
     "hours": 0,
     "minutes": 0,
-    "projects": [],
+    "projects": [
+      {
+        "name": "sss",
+        "tasks": []
+      }
+    ],
     "function": "Default"
   },
   {
