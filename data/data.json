@@ -4,7 +4,7 @@
     "activity": "asd",
     "short": "s",
     "hours": 0,
-    "minutes": 2,
+    "minutes": 9,
     "projects": [
       {
         "name": "asd2",
@@ -16,7 +16,8 @@
           "sss",
           "asddddd",
           "asdasdasd",
-          "sdasdasd"
+          "sdasdasd",
+          "asd"
         ]
       }
     ],
