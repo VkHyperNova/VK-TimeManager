@@ -31,7 +31,7 @@ type Project struct {
 	Tasks []string `json:"tasks"`
 }
 
-var ProgramVersion = "1.26" // Update version [16 updates]
+var ProgramVersion = "1.3" // Update version
 var filename = "data/data.json"
 
 //go:generate goversioninfo -icon=resource/timem.ico -manifest=resource/goversioninfo.exe.manifest
@@ -47,52 +47,11 @@ func main() {
 
 /*<=================================================== Main functions ===================================================>*/
 
-// Calculate time left
-func PrintTimeleft() {
-
-	// Time now
-	start := time.Now()
-
-	// Calculate minutes
-	MinutesNow := (start.Hour() * 60) + start.Minute()
-
-	// Target time 22:00
-	EndTime := 1320
-
-	// Calculate how many minutes till target time
-	MinutesTillEndTime := EndTime - MinutesNow
-
-	// If Minutes till end are negative
-	if MinutesTillEndTime < 0 {
-		MinutesTillEndTime *= -1
-		MinutesTillEndTime += EndTime
-	}
-
-	// Get Hours left
-	HoursLeft := MinutesTillEndTime / 60
-
-	// Get Minutes left
-	MinutesLeft := MinutesTillEndTime - (HoursLeft * 60)
-
-	// Print main info about programm
-	fmt.Printf(color.Colorize(color.Green, "\n<================== VK TimeManager v"))
-	fmt.Printf("%v", ProgramVersion)
-	fmt.Printf(color.Colorize(color.Green, " ==================>\n"))
-
-	fmt.Printf(color.Colorize(color.Green, "\n<--- You have "))
-	fmt.Printf("%v", HoursLeft)
-	fmt.Printf(color.Colorize(color.Green, " hours and "))
-	fmt.Printf("%v", MinutesLeft)
-	fmt.Printf(color.Colorize(color.Green, " minutes left till"))
-	fmt.Printf(" 22:00 ")
-	fmt.Printf(color.Colorize(color.Green, "--->\n\n"))
-}
-
 // Command line
 func Commandline() {
 
 	// Print commands to console
-	Print_commands()
+	Commandline_commands()
 
 	// Add default commands to data
 	data := AddDefaultCommands()
@@ -102,9 +61,7 @@ func Commandline() {
 
 	for true {
 
-		var command string
-		fmt.Scanln(&command)
-
+		command := Get_input(reader)
 		MainSwitch(command, data, reader)
 
 	}
@@ -151,28 +108,31 @@ func AddDefaultCommands() []JsonData {
 // MainSwitch
 func MainSwitch(command string, data []JsonData, reader *bufio.Reader) {
 
-	for _, value := range data {
-		switch command {
-		case value.Activity, value.Short, fmt.Sprint(value.Id):
+	switch command {
+	case "add", "a":
+		AddActivity()
+	case "delete", "del":
+		DeleteActivity()
+	case "quit", "q", "00":
+		quit()
+	default:
 
-			if value.Function == "add" {
-				AddActivity()
-			} else if value.Function == "delete" {
-				DeleteActivity()
-			} else if value.Function == "q" {
-				quit()
-			} else if value.Function == "top" {
-				topActivities(data)
-			} else {
+		start := time.Now()
+
+		for _, value := range data {
+			if value.Activity == command || value.Short == command || fmt.Sprint(value.Id) == command {
 				ClearScreen()
-				start := time.Now()
 				StartActivity(reader, start, value.Activity, value.Id)
 			}
 		}
+
+		Feedback("<< ", "No such command or activity!", " >>", true)
+		fmt.Printf(ColorGreen("\n=> "))
+
 	}
 }
 
-
+/*<=================================================== Activity functions ===================================================>*/
 
 // The loop
 func StartActivity(reader *bufio.Reader, start time.Time, Activity string, id int) {
@@ -180,18 +140,24 @@ func StartActivity(reader *bufio.Reader, start time.Time, Activity string, id in
 	// Get data from json
 	data := OpenAndGetDataFromJson()
 
+	// Prevent ERROR when some activity is deleted and max ID has been changed!
+	id = FindRealId(id)
+
 	// Get hours and minutes from json
 	hours := data[id].Hours
 	minutes := data[id].Minutes
 
 	// Tell user about started activity
-	TellUserAboutStartedActivity(id, data, Activity, start, hours, minutes)
+	PrintActivityInfo(id, data, Activity, start, hours, minutes)
+
+	// Print Projects
+	PrintProjects(id)
 
 	// Loop for input
 	loop := true
 
 	// Pause print
-	pausePrintCommands := false
+	PausePrintingCommands := false
 
 	// Define Pause time
 	PauseTime := 0
@@ -199,12 +165,10 @@ func StartActivity(reader *bufio.Reader, start time.Time, Activity string, id in
 	for loop {
 
 		// Print main commands
-		if !pausePrintCommands {			
-			PrintPauseCommands()
-		}
+		if !PausePrintingCommands {
+			PrintCommands("Projects")
 
-		// Commandline
-		fmt.Print(color.Colorize(color.Green, "\n=>  "))
+		}
 
 		// Get input from user
 		command := Get_input(reader)
@@ -215,32 +179,22 @@ func StartActivity(reader *bufio.Reader, start time.Time, Activity string, id in
 		switch command {
 		case "add", "a":
 			// Add new project
-			AddNewProject(id)
-
+			AddProject(id)
 		case "del", "d", "delete":
 			// Delete project
 			DeleteProject(id)
-
+			PrintElapsedTime(Activity, elapsed, start)
 		case "projects", "p":
 			// Print all projects
+			ClearScreen()
 			PrintProjects(id)
-
 		case "select", "s":
-			// Dont print commands
-			pausePrintCommands = true
-
 			// Select project
-			SelectIdAndAddTask(id, start, Activity)
+			SelectProject(id, start, Activity)
+		case "quit", "00", "q":
 
-			// Resume printing commands
-			pausePrintCommands = false
-
-		case "done", "00", "q":
-
-			// Tell user about elapsed time
-			fmt.Printf(color.Colorize(color.Green, "You have spent "))
-			fmt.Printf("%v", elapsed)
-			fmt.Println()
+			// Tell user elapsed time
+			Feedback("\n<< You have spent ", elapsed, " >>\n", false)
 
 			// Ask for save time
 			Save_time(reader, elapsed, id, PauseTime)
@@ -251,19 +205,16 @@ func StartActivity(reader *bufio.Reader, start time.Time, Activity string, id in
 		case "pause", "+":
 
 			// Tell user that this activity is paused
-			fmt.Printf(color.Colorize(color.Red, "\n--> '"))
-			fmt.Printf("%v", Activity)
-			fmt.Printf(color.Colorize(color.Red, "' Paused! Press any key to continue! <--"))
+			Feedback("<< [", Activity, "] paused! Press any key to continue! >>", true)
 
 			// Print pause commands
-			pausePrintCommands = true
+			PausePrintingCommands = true
 
 			// Time now
 			startPause := time.Now()
 
 			// Wait for pressing any key or enter
-			var command string
-			fmt.Scanln(&command)
+			PressEnter()
 
 			// Elapsed pause time
 			elapsedPause := time.Since(startPause)
@@ -272,607 +223,24 @@ func StartActivity(reader *bufio.Reader, start time.Time, Activity string, id in
 			PauseTime += int(math.Round(elapsedPause.Minutes()))
 
 			// Tell user about Unpause
-			fmt.Printf(color.Colorize(color.Green, "--> Unpaused [Pausetime: "))
-			fmt.Printf("%v", elapsedPause)
-			fmt.Printf(color.Colorize(color.Green, "] <--\n"))
+			Feedback("<< Unpaused [Pause time: ", elapsedPause, "] >>\n", false)
 
 			// Print default commands
-			pausePrintCommands = false
+			PausePrintingCommands = false
 
 		default:
 			ClearScreen()
-			fmt.Printf(color.Colorize(color.Green, "---> ("))
-			fmt.Printf("%v", Activity)
-			fmt.Printf(color.Colorize(color.Green, ") Elapsed Time: "))
-			fmt.Printf("%v", elapsed)
-			fmt.Printf(color.Colorize(color.Green, " since start ["))
-			fmt.Printf("%v", start.Format("15:04:05"))
-			fmt.Printf(color.Colorize(color.Green, "] <---\n"))
-		}
-
-	}
-}
-
-// Print tasks
-func ShowTasks(id int, projectid int) {
-	// Get data from json
-	data := OpenAndGetDataFromJson()
-
-	// Save Project name and tasks
-	project := data[id].Projects[projectid]
-
-	// Print all tasks with id's
-	for key, value := range project.Tasks {
-		fmt.Printf(color.Colorize(color.Green, "\nid: ("))
-		fmt.Printf("%v", key)
-		fmt.Printf(color.Colorize(color.Green, ") task: '"))
-		fmt.Printf("%v", value)
-		fmt.Printf(color.Colorize(color.Green, "'"))
-	}
-
-	// Print commands
-	fmt.Println()
-	PrintAddTaskCommands()
-}
-
-// Delete Task
-func DeleteTask(id int, projectid int) {
-loop:
-	// Ask and save id
-	taskID := AskForId()
-
-	// Get data from json
-	data := OpenAndGetDataFromJson()
-
-	// Max task id
-	MaxTaskID := len(data[id].Projects[projectid].Tasks) - 1
-
-	if taskID > MaxTaskID {
-		PrintMaxIdError(MaxTaskID)
-		goto loop
-	} else if taskID < 0 {
-		// ERROR message
-		fmt.Println(color.Colorize(color.Red, "ERROR: id cant be negative!"))
-		goto loop
-	}
-
-	// Project details
-	project := data[id].Projects[projectid]
-
-	// Ask before delete
-	check := DeleteCheckQuestion(project.Tasks[taskID])
-
-	if !check {
-		// Delete
-		data[id].Projects[projectid].Tasks = append(data[id].Projects[projectid].Tasks[:taskID], data[id].Projects[projectid].Tasks[taskID+1:]...)
-
-		// Convert it back to byte
-		dataBytes := MarshalIndentToByte(data, "DeleteItem")
-
-		// Override json file with updated data
-		WriteToFile(dataBytes)
-
-		fmt.Printf(color.Colorize(color.Red, "\nTask '"))
-		fmt.Printf("%v", project.Name)
-		fmt.Printf(color.Colorize(color.Red, "' has been deleted!\n"))
-
-		// Print commands
-		fmt.Println()
-		PrintAddTaskCommands()
-
-	} else {
-		// Print commands
-		fmt.Println()
-		PrintAddTaskCommands()
-	}
-}
-
-// Delete Project
-func DeleteProject(id int) {
-loop:
-	// Ask and save id
-	projectID := AskForId()
-	
-	// Get data from json
-	data := OpenAndGetDataFromJson()
-
-	// Save maximum id
-	MaxID := len(data[id].Projects) - 1
-	
-	if projectID > MaxID {
-		PrintMaxIdError(MaxID)
-		goto loop
-	} else if projectID < 0 {
-		// ERROR message
-		fmt.Println(color.Colorize(color.Red, "ERROR: id cant be negative!"))
-		goto loop
-	}
-
-	// Project details
-	project := data[id].Projects[projectID]
-
-	// Ask before delete
-	check := DeleteCheckQuestion(project.Name)
-
-	// If check is false delete item
-	if !check {
-		// Delete
-		data[id].Projects = append(data[id].Projects[:projectID], data[id].Projects[projectID+1:]...)
-
-		// Convert it back to byte
-		dataBytes := MarshalIndentToByte(data, "DeleteItem")
-
-		// Override json file with updated data
-		WriteToFile(dataBytes)
-
-		fmt.Printf(color.Colorize(color.Red, "\nProject '"))
-		fmt.Printf("%v", project.Name)
-		fmt.Printf(color.Colorize(color.Red, "' has been deleted!\n"))
-
-
-	}
-}
-
-// Add task to project
-func SelectIdAndAddTask(id int, start time.Time, Activity string) {
-
-	// Bookmark
-loop:
-
-	// Get reader
-	reader := bufio.NewReader(os.Stdin)
-
-	// Ask for id
-	ProjectId := AskForId()
-
-	// Get data from json
-	data := OpenAndGetDataFromJson()
-
-	// Save maximum id
-	MaxID := len(data[id].Projects) - 1
-
-	// Error if id is bigger than MaxID or negative
-	if ProjectId > MaxID {
-
-		// ERROR message
-		fmt.Printf(color.Colorize(color.Red, "ERROR: Max id is ("))
-		fmt.Printf("%v", MaxID)
-		fmt.Printf(color.Colorize(color.Red, ")\n"))
-
-
-		// Go to bookmark
-		goto loop
-
-	} else if ProjectId < 0 {
-
-		// ERROR message
-		fmt.Println(color.Colorize(color.Red, "ERROR: id cant be negative!"))
-
-		// Go to bookmark
-		goto loop
-	}
-
-	// Find project name by projectid
-	CurrentProject := data[id].Projects[ProjectId]
-
-	// Save project name
-	pName := CurrentProject.Name
-
-	// Print project name
-	fmt.Println(color.Colorize(color.Green, "\n=> Project:"), pName)
-
-	// Print add task commands
-	PrintAddTaskCommands()
-
-	loop2 := true
-
-	for loop2 {
-
-		// Get input from user
-		command := Get_input(reader)
-
-		// Elapsed time since activity start
-		elapsed := time.Since(start)
-
-		switch command {
-		case "back", "b":
-			loop2 = false
-		case "add", "a":
-			AddTask(pName, ProjectId, id)
-		case "delete", "del", "d":
-			DeleteTask(id, ProjectId)
-		case "show", "s":
-			ShowTasks(id, ProjectId)
-		case "quit", "q", "00":
-			// Tell user about elapsed time
-			fmt.Printf(color.Colorize(color.Green, "You have spent "))
-			fmt.Printf("%v", elapsed)
-			fmt.Println()
-
-			// Ask for save time
-			Save_time(reader, elapsed, id, 0)
-
-			// End loop
-			loop2 = false
-
-		default:
-			ClearScreen()
-			fmt.Printf(color.Colorize(color.Green, "---> ("))
-			fmt.Printf("%v", Activity)
-			fmt.Printf(color.Colorize(color.Green, ") Elapsed Time: "))
-			fmt.Printf("%v", elapsed)
-			fmt.Printf(color.Colorize(color.Green, " since start ["))
-			fmt.Printf("%v", start.Format("15:04:05"))
-			fmt.Printf(color.Colorize(color.Green, "] <---\n"))
-			PrintAddTaskCommands()
+			PrintElapsedTime(Activity, elapsed, start)
 
 		}
 	}
-}
-
-// Ask before delete
-func DeleteCheckQuestion(name string) bool {
-
-	if name != "" {
-		fmt.Printf(color.Colorize(color.Red, "\nDo you really want to delete '"))
-		fmt.Printf("%v", name)
-		fmt.Printf(color.Colorize(color.Red, "' ???\n"))
-	}
-
-	// Get reader
-	reader := bufio.NewReader(os.Stdin)
-
-	// Get input
-	input := Get_input(reader)
-
-	// Check if 'no' is entered
-	check := "no" == input
-
-	return check
-}
-
-// Add task
-func AddTask(pName string, SelectedIdint int, id int) {
-
-	reader := bufio.NewReader(os.Stdin)
-	fmt.Println(color.Colorize(color.Green, "\nUpdate or Task name?"))
-	fmt.Printf(color.Colorize(color.Green, "=> "))
-
-	// Save answer
-	tName := Get_input(reader)
-
-	// Get data from json
-	data := OpenAndGetDataFromJson()
-
-	// Empty slice for tasks
-	var tasks []string
-
-	// Take old tasks and add to tasks slice
-	for key, value := range data[id].Projects {
-		if key == SelectedIdint {
-			tasks = value.Tasks
-		}
-	}
-
-	// Append new task to tasks slice
-	tasks = append(tasks, tName)
-
-	// Append new tasks slice to data.json
-	data[id].Projects[SelectedIdint] = Project{Name: pName, Tasks: tasks}
-
-	// Convert it back to byte
-	dataBytes := MarshalIndentToByte(data, "UpdateItem")
-
-	// Override json file with updated data
-	WriteToFile(dataBytes)
-
-	// Print about successful operation
-	fmt.Printf(color.Colorize(color.Red, "\n--->> Task '"))
-	fmt.Printf("%v", tName)
-	fmt.Printf(color.Colorize(color.Red, "' added to project '"))
-	fmt.Printf("%v", pName)
-	fmt.Printf(color.Colorize(color.Red, "'! <<---\n"))
-	PrintAddTaskCommands()
-}
-
-// Add new Project
-func AddNewProject(id int) {
-
-	// Bookmark
-loop:
-
-	// Get reader
-	reader := bufio.NewReader(os.Stdin)
-
-	// Ask for project name
-	fmt.Println(color.Colorize(color.Green, "Project name?"))
-	fmt.Printf(color.Colorize(color.Green, "=> "))
-
-	// Save answer
-	pName := Get_input(reader)
-
-	// Get data from json
-	data := OpenAndGetDataFromJson()
-
-	// Check if project name already exist in db
-	for _, value := range data {
-		for _, v := range value.Projects {
-			switch pName {
-			case v.Name:
-				fmt.Printf(color.Colorize(color.Red, "\nError: Project '"))
-				fmt.Printf("%v", pName)
-				fmt.Printf(color.Colorize(color.Red, "' already exist in db\n\n"))
-
-
-				// Restart the for loop, go to back to loop label
-				goto loop
-			}
-		}
-
-	}
-
-	// Init new project
-	NewProject := Project{pName, []string{}}
-
-	// Append new project to db
-	data[id].Projects = append(data[id].Projects, NewProject)
-
-	// Convert it back to byte
-	dataBytes := MarshalIndentToByte(data, "UpdateItem")
-
-	// Override json file with updated data
-	WriteToFile(dataBytes)
-
-	fmt.Printf(color.Colorize(color.Purple, "\n--->> Project '"))
-	fmt.Printf("%v", pName)
-	fmt.Printf(color.Colorize(color.Purple, "' added to db! <<---"))
-}
-
-// Get Top activities
-func topActivities(data []JsonData) {
-
-	// Select file
-	jq := gojsonq.New().File(filename)
-
-	// Sort by activity, hours and minutes
-	top := jq.SortBy("hours", "desc").Only("activity", "hours", "minutes")
-
-	// Pretty print
-	b, err := json.MarshalIndent(top, "", "  ")
-
-	// Print error if any
-	ErrorHandling(err, "topActivities func")
-
-	// Print activities
-	fmt.Print(string(b))
-
-	// Press enter to go back to commandline
-	fmt.Println(color.Colorize(color.Green, "\n====> PRESS ENTER TO GO BACK TO COMMANDLINE <===="))
-
-	// Check if enter is pressed
-	var command string
-	fmt.Scanln(&command)
-
-	// Start commandline
-	Commandline()
-}
-
-// Save time
-func Save_time(reader *bufio.Reader, elapsed time.Duration, id int, PauseTime int) {
-
-	// Print save message
-	fmt.Println(color.Colorize(color.Green, "Do you want to save the time? (Press enter or type no)"))
-	fmt.Print(color.Colorize(color.Green, "=>  "))
-
-	// Ask before delete
-	check := DeleteCheckQuestion("")
-
-	if check {
-
-		// If 'no' is entered tell the user
-		fmt.Println(color.Colorize(color.Red, "===>> Last Time NOT SAVED <<==="))
-
-		// Return to commandline
-		Commandline()
-	} else {
-
-		// Tell the user about saving the time
-		fmt.Println(color.Colorize(color.Red, "===>> Last Time has been SAVED <<==="))
-
-		// Save time to db
-		UpdateJsonFile(elapsed, id, PauseTime)
-
-		// Return to commandline
-		Commandline()
-	}
-}
-
-// Print commands
-func Print_commands() {
-
-	// Print how much time is left till 22:00
-	PrintTimeleft()
-
-	// Get data from json
-	data := OpenAndGetDataFromJson()
-
-	if len(data) == 0 {
-
-		// Warn if db is empty
-		fmt.Println(color.Colorize(color.Red, "<--- WARNING: No data in database --->"))
-	} else {
-
-		// Print question
-		fmt.Println(color.Colorize(color.Green, "=> What do you want to do now?"))
-
-		// Print all activities
-		for _, component := range data {
-			fmt.Printf(color.Colorize(color.Green, "-> ["))
-			fmt.Printf("%v", component.Hours)
-
-			fmt.Printf(color.Colorize(color.Green, "h:"))
-			fmt.Printf("%v", component.Minutes)
-
-			fmt.Printf(color.Colorize(color.Green, "m] "))
-			fmt.Printf("%v", component.Activity)
-
-			fmt.Printf(color.Colorize(color.Green, " || "))
-			fmt.Printf("%v", component.Short)
-
-			fmt.Printf(color.Colorize(color.Green, "("))
-			fmt.Printf("%v", component.Id)
-			fmt.Printf(color.Colorize(color.Green, ")\n"))
-
-		}
-	}
-
-	// Add main commands
-	fmt.Println(color.Colorize(color.Green, "\n=> Commands:"))
-
-	// top command
-	fmt.Printf(color.Colorize(color.Green, "-> ('"))
-	fmt.Printf("top")
-	fmt.Printf(color.Colorize(color.Green, "' or '"))
-	fmt.Printf("t")
-	fmt.Printf(color.Colorize(color.Green, "')\n"))
-
-	// add command
-	fmt.Printf(color.Colorize(color.Green, "-> ('"))
-	fmt.Printf("add")
-	fmt.Printf(color.Colorize(color.Green, "' or '"))
-	fmt.Printf("a")
-	fmt.Printf(color.Colorize(color.Green, "')\n"))
-
-	// delete command
-	fmt.Printf(color.Colorize(color.Green, "-> ('"))
-	fmt.Printf("delete")
-	fmt.Printf(color.Colorize(color.Green, "' or '"))
-	fmt.Printf("del")
-	fmt.Printf(color.Colorize(color.Green, "')\n"))
-
-	// quit command
-	fmt.Printf(color.Colorize(color.Green, "-> ('"))
-	fmt.Printf("quit")
-	fmt.Printf(color.Colorize(color.Green, "' or '"))
-	fmt.Printf("q")
-	fmt.Printf(color.Colorize(color.Green, "' or '"))
-	fmt.Printf("00")
-	fmt.Printf(color.Colorize(color.Green, "')\n"))
-
-	fmt.Print(color.Colorize(color.Green, "\n=> "))
-}
-
-// Delete activity
-func DeleteActivity() {
-	// Ask for id
-	id := AskForId()
-
-	// Clear the screen
-	ClearScreen()
-
-	// Get data from json
-	data := OpenAndGetDataFromJson()
-
-	// Find Index
-	index := FindIndexOf(id, data)
-
-	// Check if index exist
-	if index == -1 {
-
-		fmt.Printf(color.Colorize(color.Red, "--> ID: '"))
-		fmt.Printf("%v", id)
-		fmt.Printf(color.Colorize(color.Red, "' not found!"))
-
-		// Wait for enter
-		var command string
-		fmt.Scanln(&command)
-
-		// Return to commandline
-		Commandline()
-	}
-
-	// Delete
-	data = append(data[:index], data[index+1:]...)
-
-	// Convert it back to byte
-	dataBytes := MarshalIndentToByte(data, "DeleteItem")
-
-	// Override json file with updated data
-	WriteToFile(dataBytes)
-
-	// Tell about successful operation
-	fmt.Printf(color.Colorize(color.Red, "--> ID: '"))
-	fmt.Printf("%v", id)
-	fmt.Printf(color.Colorize(color.Red, "' Removed!"))
-
-
-	// Press enter to continue
-	var command string
-	fmt.Scanln(&command)
-
-	// Return to commandline
-	Commandline()
-}
-
-// Save time function
-func UpdateJsonFile(elapsed time.Duration, id int, PauseTime int) {
-	// Get data from json
-	data := OpenAndGetDataFromJson()
-
-	// Find Index
-	index := FindIndexOf(id, data)
-
-	// Check if index exist
-	if index == -1 {
-
-		// Tell the user that index does not exist
-		fmt.Printf(color.Colorize(color.Red, "--> ID: '"))
-		fmt.Printf("%v", id)
-		fmt.Printf(color.Colorize(color.Red, "' not found!"))
-
-
-		// Return to commandline
-		Commandline()
-	}
-
-	//Old + new Minutes
-	NewMinutes := int(float64(data[id].Minutes) + math.Round(elapsed.Minutes()))
-
-	// Remove PauseTime minutes
-	if PauseTime > 0 {
-		NewMinutes -= PauseTime
-	}
-
-	// Get hours out of all minutes
-	GetHours := NewMinutes / 60
-
-	// Remove hours and get minutes left
-	GetMinutes := NewMinutes - (GetHours * 60)
-
-	// Add new hours
-	HoursToAdd := data[id].Hours + GetHours
-
-	// Add new minutes
-	MinutesToAdd := GetMinutes
-
-	// Add new minutes to db
-	data[id].Minutes = MinutesToAdd
-
-	// Add new hours to db
-	data[id].Hours = HoursToAdd
-
-	// Convert it back to byte
-	dataBytes := MarshalIndentToByte(data, "UpdateItem")
-
-	// Override json file with updated data
-	WriteToFile(dataBytes)
 }
 
 // Add new activity to json file
 func AddActivity() {
 
 	// Questions array
-	questions := []string{"Activity name?", "Activity short name?"}
+	questions := []string{"\n<< Activity name? >>", "\n << Short name? >>"}
 
 	// Store answers
 	Answers := []string{}
@@ -888,9 +256,7 @@ func AddActivity() {
 		// Bookmark
 	loop:
 
-		fmt.Println()
-		fmt.Println(color.Colorize(color.Green, value))
-		fmt.Print(color.Colorize(color.Green, "=> "))
+		Feedback(value, "", "\n=> ", false)
 
 		// Get answer
 		readerAnswer := Get_input(reader)
@@ -899,10 +265,10 @@ func AddActivity() {
 		for _, value := range data {
 
 			switch readerAnswer {
-			case value.Activity, value.Short, "delete", "del", "quit", "q", "add", "a":
-				fmt.Printf(color.Colorize(color.Red, "Error: '"))
-				fmt.Printf("%v", readerAnswer)
-				fmt.Printf(color.Colorize(color.Red, "' already exist in db\n"))
+			case value.Activity, value.Short, "delete", "del", "quit", "q", "add", "a", "t", "top", "back", "b":
+
+				// Tell user
+				Feedback("[ERROR] : '", readerAnswer, "' already exist in db\n", true)
 
 				// Restart the for loop, go to back to loop label
 				goto loop
@@ -937,89 +303,705 @@ func AddActivity() {
 	Commandline()
 }
 
-/*<=================================================== Small Help functions ===================================================>*/
+// Get Top activities
+func topActivities(data []JsonData) {
 
+	// Select file
+	jq := gojsonq.New().File(filename)
+
+	// Sort by activity, hours and minutes and select top 5
+	top := jq.Limit(5).SortBy("hours", "desc").Select("activity", "hours", "minutes").Get()
+
+	// Pretty print
+	b, err := json.MarshalIndent(top, "", "  ")
+
+	// Print error if any
+	ErrorHandling(err, "topActivities func")
+
+	ClearScreen()
+
+	// Print activities
+	fmt.Print(string(b))
+
+	// Press enter to go back to commandline
+	Feedback("\n<< PRESS", " ENTER ", "TO GO BACK TO COMMANDLINE >>", false)
+
+	// Check if enter is pressed
+	PressEnter()
+
+	ClearScreen()
+
+	// Start commandline
+	Commandline()
+}
+
+// Delete activity
+func DeleteActivity() {
+	// Ask for id
+	id := AskForId()
+
+	// Clear the screen
+	ClearScreen()
+
+	// Get data from json
+	data := OpenAndGetDataFromJson()
+
+	// Find Index
+	index := FindIndexOf(id, data)
+
+	// Check if index exist
+	if index == -1 {
+
+		// Tell user that index does not exist
+		Feedback("<< ID: '", id, "' not found! >>", true)
+
+		// Wait for enter
+		PressEnter()
+
+		// Return to commandline
+		Commandline()
+	}
+
+	// Delete
+	data = append(data[:index], data[index+1:]...)
+
+	// Convert it back to byte
+	dataBytes := MarshalIndentToByte(data, "DeleteItem")
+
+	// Override json file with updated data
+	WriteToFile(dataBytes)
+
+	// Tell about successful operation
+	Feedback("<< ID: '", id, "' Removed! >>", true)
+
+	// Press enter to continue
+	PressEnter()
+
+	// Return to commandline
+	Commandline()
+}
+
+// Save time
+func Save_time(reader *bufio.Reader, elapsed time.Duration, id int, PauseTime int) {
+
+	// Print save message
+	Feedback("\n<< Do you want to save the time? (", "type no if not", ")\n=> ", false)
+
+	// Ask before delete
+	check := DeleteCheckQuestion("")
+
+	if check {
+
+		// If 'no' is entered tell the user
+		Feedback("<< ", "LAST TIME NOT SAVED", " >>\n", true)
+
+		// Press enter to continue
+		PressEnter()
+
+		ClearScreen()
+
+		// Return to commandline
+		Commandline()
+
+	} else {
+
+		// Tell the user about saving the time
+		Feedback("<< ", "LAST TIME HAS BEEN SAVED", " >>\n", false)
+
+		// Save time to db
+		UpdateJsonFile(elapsed, id, PauseTime)
+
+		// Return to commandline
+		Commandline()
+	}
+}
+
+// Save time function
+func UpdateJsonFile(elapsed time.Duration, id int, PauseTime int) {
+	// Get data from json
+	data := OpenAndGetDataFromJson()
+
+	//Old + new Minutes
+	NewMinutes := int(float64(data[id].Minutes) + math.Round(elapsed.Minutes()))
+
+	// Remove PauseTime minutes
+	if PauseTime > 0 {
+		NewMinutes -= PauseTime
+	}
+
+	// Get hours out of all minutes
+	GetHours := NewMinutes / 60
+
+	// Remove hours and get minutes left
+	GetMinutes := NewMinutes - (GetHours * 60)
+
+	// Add new hours
+	HoursToAdd := data[id].Hours + GetHours
+
+	// Add new minutes
+	MinutesToAdd := GetMinutes
+
+	// Add new minutes to db
+	data[id].Minutes = MinutesToAdd
+
+	// Add new hours to db
+	data[id].Hours = HoursToAdd
+
+	// Convert it back to byte
+	dataBytes := MarshalIndentToByte(data, "UpdateItem")
+
+	// Override json file with updated data
+	WriteToFile(dataBytes)
+}
+
+/*<=================================================== Project functions ===================================================>*/
+
+// Add new Project
+func AddProject(id int) {
+
+	// Bookmark
+loop:
+
+	// Get reader
+	reader := bufio.NewReader(os.Stdin)
+
+	// Ask for project name
+	Feedback("\n<< Project name? >>", "", "\n=> ", false)
+
+	// Save answer
+	pName := Get_input(reader)
+
+	// Get data from json
+	data := OpenAndGetDataFromJson()
+
+	// Check if project name already exist in db
+	for _, value := range data {
+		for _, v := range value.Projects {
+			switch pName {
+			case v.Name:
+
+				// Tell user that project already exist in database
+				Feedback("\n<< [Error]: Project '", pName, "' already exist in db >>\n", true)
+
+				// Restart the for loop, go to back to loop label
+				goto loop
+			}
+		}
+
+	}
+
+	// Init new project
+	NewProject := Project{pName, []string{}}
+
+	// Append new project to db
+	data[id].Projects = append(data[id].Projects, NewProject)
+
+	// Convert it back to byte
+	dataBytes := MarshalIndentToByte(data, "UpdateItem")
+
+	// Override json file with updated data
+	WriteToFile(dataBytes)
+
+	// Tell the user about successful operation
+	Feedback("\n<< Project '", pName, "' added to db! >>\n", false)
+}
+
+// Delete Project
+func DeleteProject(id int) {
+loop:
+	// Ask and save id
+	projectID := AskForId()
+
+	// Get data from json
+	data := OpenAndGetDataFromJson()
+
+	// Save maximum id
+	MaxID := len(data[id].Projects) - 1
+
+	if projectID > MaxID {
+		// ERROR message
+		Feedback("<< [ERROR] Max ID: [", MaxID, "] >>\n\n", true)
+		goto loop
+	} else if projectID < 0 {
+		// ERROR message
+		Feedback("<< [ERROR] id cant be negative!", "", " >>\n", true)
+		goto loop
+	}
+
+	// Project details
+	project := data[id].Projects[projectID]
+
+	// Ask before delete
+	check := DeleteCheckQuestion(project.Name)
+
+	// If check is false delete item
+	if !check {
+		// Delete
+		data[id].Projects = append(data[id].Projects[:projectID], data[id].Projects[projectID+1:]...)
+
+		// Convert it back to byte
+		dataBytes := MarshalIndentToByte(data, "DeleteItem")
+
+		// Override json file with updated data
+		WriteToFile(dataBytes)
+
+		// Tell user about successful operation
+		Feedback("\nProject '", project.Name, "' has been deleted!\n", true)
+	} else {
+		ClearScreen()
+	}
+}
+
+/*<=================================================== Tasks functions ===================================================>*/
+// Print tasks
+func ShowTasks(id int, projectid int) {
+
+	// Get data from json
+	data := OpenAndGetDataFromJson()
+
+	// Save Project name and tasks
+	project := data[id].Projects[projectid]
+
+	// Print all tasks with id's
+	for key, value := range project.Tasks {
+		Feedback("\nTask(", key, ") : '", false)
+		Feedback("", value, "'", false)
+	}
+	fmt.Println()
+
+}
+
+// Delete Task
+func DeleteTask(id int, projectid int) {
+loop:
+	// Ask and save id
+	taskID := AskForId()
+
+	// Get data from json
+	data := OpenAndGetDataFromJson()
+
+	// Max task id
+	MaxTaskID := len(data[id].Projects[projectid].Tasks) - 1
+
+	if taskID > MaxTaskID {
+		Feedback("<< [ERROR] Max ID: [", MaxTaskID, "] >>\n\n", true)
+		goto loop
+	} else if taskID < 0 {
+
+		// ERROR message
+		Feedback("<< [ERROR] id cant be negative!", "", " >>\n\n", true)
+		goto loop
+	}
+
+	// Project details
+	project := data[id].Projects[projectid]
+
+	// Ask before delete
+	check := DeleteCheckQuestion(project.Tasks[taskID])
+
+	if !check {
+		// Delete
+		data[id].Projects[projectid].Tasks = append(data[id].Projects[projectid].Tasks[:taskID], data[id].Projects[projectid].Tasks[taskID+1:]...)
+
+		// Convert it back to byte
+		dataBytes := MarshalIndentToByte(data, "DeleteItem")
+
+		// Override json file with updated data
+		WriteToFile(dataBytes)
+
+		// Tell user about successful operation
+		Feedback("\nTask '", project.Tasks[taskID], "' has been deleted!\n", true)
+
+		// Print commands
+		PrintCommands("Tasks")
+
+	} else {
+		// Print commands
+		PrintCommands("Tasks")
+	}
+}
+
+// Add task to project
+func SelectProject(id int, start time.Time, Activity string) {
+
+	// Bookmark
+loop:
+
+	// Get reader
+	reader := bufio.NewReader(os.Stdin)
+
+	// Ask for id
+	ProjectId := AskForId()
+
+	// Get data from json
+	data := OpenAndGetDataFromJson()
+
+	// Save maximum id
+	MaxID := len(data[id].Projects) - 1
+
+	// Error if id is bigger than MaxID or negative
+	if ProjectId > MaxID {
+
+		// ERROR message
+		Feedback("<< [ERROR] Max ID: [", MaxID, "] >>\n\n", true)
+
+		// Go to bookmark
+		goto loop
+
+	} else if ProjectId < 0 {
+
+		// ERROR message
+		Feedback("<< [ERROR] id cant be negative!", "", " >>\n\n", true)
+
+		// Go to bookmark
+		goto loop
+	}
+
+	ClearScreen()
+
+	// Find project name by projectid
+	CurrentProject := data[id].Projects[ProjectId]
+
+	// Save project name
+	pName := CurrentProject.Name
+
+	// Print project name
+	Feedback("\n<< Project: ", pName, " >>\n", false)
+
+	// Show tasks
+	ShowTasks(id, ProjectId)
+
+	// Print add task commands
+	PrintCommands("Tasks")
+
+	loop2 := true
+
+	for loop2 {
+
+		// Get input from user
+		command := Get_input(reader)
+
+		// Elapsed time since activity start
+		elapsed := time.Since(start)
+
+		switch command {
+		case "back", "b":
+
+			loop2 = false
+			ClearScreen()
+			// Print elapsed time since start
+			PrintElapsedTime(Activity, elapsed, start)
+			// Print Projects
+			PrintProjects(id)
+
+		case "add", "a":
+			AddTask(pName, ProjectId, id)
+		case "delete", "del", "d":
+			DeleteTask(id, ProjectId)
+		case "show", "s":
+			ShowTasks(id, ProjectId)
+			PrintCommands("Tasks")
+		case "quit", "q", "00":
+
+			// Tell user about elapsed time
+			Feedback("<< You have spent ", elapsed, " >>\n", false)
+
+			// Ask for save time
+			Save_time(reader, elapsed, id, 0)
+
+			// End loop
+			loop2 = false
+
+		default:
+			ClearScreen()
+
+			// Print elapsed time since start
+			PrintElapsedTime(Activity, elapsed, start)
+
+			// Print commands for tasks
+			PrintCommands("Tasks")
+
+		}
+	}
+}
+
+// Add task
+func AddTask(pName string, SelectedIdint int, id int) {
+
+	reader := bufio.NewReader(os.Stdin)
+
+	// Ask task name
+	Feedback("\n<< Task name? >>", "", "\n=> ", false)
+
+	// Save answer
+	tName := Get_input(reader)
+
+	// Get data from json
+	data := OpenAndGetDataFromJson()
+
+	// Empty slice for tasks
+	var tasks []string
+
+	// Take old tasks and add to tasks slice
+	for key, value := range data[id].Projects {
+		if key == SelectedIdint {
+			tasks = value.Tasks
+		}
+	}
+
+	// Append new task to tasks slice
+	tasks = append(tasks, tName)
+
+	// Append new tasks slice to data.json
+	data[id].Projects[SelectedIdint] = Project{Name: pName, Tasks: tasks}
+
+	// Convert it back to byte
+	dataBytes := MarshalIndentToByte(data, "UpdateItem")
+
+	// Override json file with updated data
+	WriteToFile(dataBytes)
+
+	// Print about successful operation
+	PrintTaskAddedToProject(tName, pName)
+
+	// Print Commands
+	PrintCommands("Tasks")
+}
+
+/*<=================================================== Print functions ===================================================>*/
+
+// Print commands
+func Commandline_commands() {
+
+	// Print how much time is left till 22:00
+	PrintTimeleft()
+
+	// Get data from json
+	data := OpenAndGetDataFromJson()
+
+	if len(data) == 0 {
+		Feedback("", "<< WARNING: No data in database >>", "", true)
+	} else {
+		PrintAllActivities(data)
+	}
+
+	// Add main commands
+	PrintCommands("Activity")
+}
+
+// Calculate time left
+func PrintTimeleft() {
+
+	// Time now
+	start := time.Now()
+
+	// Calculate minutes
+	MinutesNow := (start.Hour() * 60) + start.Minute()
+
+	// Target time 22:00
+	EndTime := 1320
+
+	// Calculate how many minutes till target time
+	MinutesTillEndTime := EndTime - MinutesNow
+
+	// If Minutes till end are negative
+	if MinutesTillEndTime < 0 {
+		MinutesTillEndTime *= -1
+		MinutesTillEndTime += EndTime
+	}
+
+	// Get Hours left
+	HoursLeft := MinutesTillEndTime / 60
+
+	// Get Minutes left
+	MinutesLeft := MinutesTillEndTime - (HoursLeft * 60)
+
+	// Print main info about programm
+	PrintProgramName(HoursLeft, MinutesLeft)
+}
+
+func Feedback(first interface{}, middle interface{}, last interface{}, red bool) {
+
+	ToPrint := []string{ColorGreen(first), ColorPurple(middle), ColorGreen(last)}
+
+	if red {
+		ToPrint = []string{ColorRed(first), ColorPurple(middle), ColorRed(last)}
+	}
+
+	for _, v := range ToPrint {
+		fmt.Printf(v)
+	}
+}
+
+func ColorRed(item interface{}) string {
+	colorized := fmt.Sprintf(color.Colorize(color.Red, "%v"), item)
+	return colorized
+}
+
+func ColorPurple(item interface{}) string {
+	colorized := fmt.Sprintf(color.Colorize(color.Purple, "%v"), item)
+	return colorized
+}
+
+func ColorGreen(item interface{}) string {
+	colorized := fmt.Sprintf(color.Colorize(color.Green, "%v"), item)
+	return colorized
+}
+
+func PrintElapsedTime(Activity string, elapsed time.Duration, start time.Time) {
+	Feedback("\n<< [", Activity, "]", false)
+	Feedback(" Elapsed Time: ", elapsed, "", false)
+	Feedback(" since start ", start.Format("15:04:05"), " >>\n", false)
+}
+
+// Print Program name and version
+func PrintProgramName(HoursLeft int, MinutesLeft int) {
+
+	Feedback("\n<< VK TimeManager v", ProgramVersion, " >>\n", false)
+	Feedback("\n<< You have ", HoursLeft, " hours ", false)
+	Feedback("and ", MinutesLeft, " minutes left", false)
+	Feedback(" till ", "22:00", " >>\n\n", false)
+}
+
+func PrintTaskAddedToProject(tName string, pName string) {
+	Feedback("\n<< Task '", tName, "' added to project '", false)
+	Feedback("", pName, "'! >>\n", false)
+}
+
+func PrintCommands(command_type string) {
+
+	// Print command type
+	fmt.Printf(ColorGreen("\n<< ") + ColorPurple(command_type) + ColorGreen(" Commands >> \n"))
+
+	// Print commands by type
+	switch command_type {
+	case "Activity":
+		PrintActivityCommands()
+	case "Projects":
+		PrintProjectsCommands()
+	case "Tasks":
+		PrintTasksCommands()
+	}
+
+	fmt.Printf(ColorGreen("\n=> "))
+}
+
+func PrintActivityCommands() {
+
+	Feedback("<< | <", "top", "> or ", false)
+	Feedback("<", "t", ">", false)
+
+	Feedback(" | <", "add", "> or ", false)
+	Feedback("<", "a", ">", false)
+
+	Feedback(" | <", "delete", "> or ", false)
+	Feedback("<", "del", ">", false)
+	Feedback(" | <", "quit", "> or ", false)
+	Feedback("<", "q", "> or ", false)
+	Feedback("<", "00", ">  | >>", false)
+}
+
+func PrintProjectsCommands() {
+	Feedback("<< | <", "add", "> or ", false)
+	Feedback("<", "a", ">", false)
+	Feedback(" | <", "delete", "> or ", false)
+	Feedback("<", "del", ">", false)
+	Feedback(" | <", "projects", "> or ", false)
+	Feedback("<", "p", ">", false)
+	Feedback(" | <", "select", "> or ", false)
+	Feedback("<", "s", "> | >>", false)
+	Feedback("\n<< | <", "pause", "> or ", false)
+	Feedback("<", "+", ">", false)
+	Feedback(" | <", "quit", "> or ", false)
+	Feedback("<", "q", "> or ", false)
+	Feedback("<", "00", "> | >>", false)
+}
+
+func PrintTasksCommands() {
+	Feedback("<< | <", "add", "> or ", false)
+	Feedback("<", "a", ">", false)
+	Feedback(" | <", "delete", "> or ", false)
+	Feedback("<", "del", ">", false)
+	Feedback(" | <", "show", "> or ", false)
+	Feedback("<", "s", "> | >>", false)
+	Feedback("\n<< | <", "back", "> or ", false)
+	Feedback("<", "b", ">", false)
+	Feedback(" | <", "quit", "> or ", false)
+	Feedback("<", "q", "> or ", false)
+	Feedback("<", "00", "> | >>", false)
+}
+
+func MakeCommandsArray(name string, short string) string {
+	array := ColorGreen("<") + ColorPurple(name) + ColorGreen("> or <") + ColorPurple(short) + ColorGreen(">")
+	return array
+}
+
+func PrintAllActivities(data []JsonData) {
+
+	Feedback("<< ", " What do you want to do now? ", ">>\n", false)
+
+	// Print all activities
+	for _, component := range data {
+		Feedback("<< [", component.Hours, "h:", false)
+		Feedback("", component.Minutes, "m] ", false)
+		Feedback("", component.Activity, " || ", false)
+		Feedback("", component.Short, "(", false)
+		Feedback("", component.Id, ") >>\n", false)
+	}
+}
 
 // Tell user about started activity
-func TellUserAboutStartedActivity(id int, data []JsonData, Activity string, start time.Time, hours int, minutes int){
-	// Tell user about started activity
-	fmt.Println()
-	fmt.Printf(color.Colorize(color.Green, "<--- Starting "))
-	fmt.Printf("%v", Activity)
-	fmt.Printf(color.Colorize(color.Green, " at "))
-	fmt.Printf("%v", start.Format("02.01.2006 15:04:05"))
-	fmt.Printf(color.Colorize(color.Green, " --->\n"))
+func PrintActivityInfo(id int, data []JsonData, Activity string, start time.Time, hours int, minutes int) {
 
-	fmt.Printf(color.Colorize(color.Green, "\n<--- Total time spent on this activity: "))
-	fmt.Printf("%v", hours)
-	fmt.Printf(color.Colorize(color.Green, " hours "))
-	fmt.Printf("%v", minutes)
-	fmt.Printf(color.Colorize(color.Green, " minutes --->\n"))
-
-
-	fmt.Printf(color.Colorize(color.Green, "\n=>> Nr of Projects: "))
-	fmt.Printf("%v", len(data[id].Projects))
+	Feedback("<< Starting ", Activity, "", false)
+	Feedback(" at ", start.Format("02.01.2006 15:04:05"), " >>\n", false)
+	Feedback("\n<< Total time spent on this activity: ", hours, " hours ", false)
+	Feedback("", minutes, " minutes >>\n", false)
+	//Feedback("\n<< Nr of Projects: ", len(data[id].Projects), " >>\n", false)
 }
 
-// Print pause commands
-func PrintPauseCommands(){
-	fmt.Println()
-	fmt.Printf(color.Colorize(color.Green, "\n--> (Press"))
-	fmt.Printf(" enter ")
-	fmt.Printf(color.Colorize(color.Green, "to see elapsed time!)\n"))
+// Print projects
+func PrintProjects(id int) {
 
-	// add project
-	fmt.Printf(color.Colorize(color.Green, "--> (Type '"))
-	fmt.Printf("add")
-	fmt.Printf(color.Colorize(color.Green, "' or '"))
-	fmt.Printf("a")
-	fmt.Printf(color.Colorize(color.Green, "' to add a project)\n"))
+	// Get data from json
+	data := OpenAndGetDataFromJson()
 
-	// delete project
-	fmt.Printf(color.Colorize(color.Green, "--> (Type '"))
-	fmt.Printf("delete")
-	fmt.Printf(color.Colorize(color.Green, "', '"))
-	fmt.Printf("del")
-	fmt.Printf(color.Colorize(color.Green, "' or '"))
-	fmt.Printf("d")
-	fmt.Printf(color.Colorize(color.Green, "' to delete a project)\n"))
+	Feedback("\n<< My Projects (", len(data[id].Projects), ") >>\n", false)
 
-	// see projects
-	fmt.Printf(color.Colorize(color.Green, "--> (Type '"))
-	fmt.Printf("projects")
-	fmt.Printf(color.Colorize(color.Green, "' or '"))
-	fmt.Printf("p")
-	fmt.Printf(color.Colorize(color.Green, "' to see projects)\n"))
+	// Print all projects id --> name --> tasks
+	for key, value := range data[id].Projects {
 
-	// select project
-	fmt.Printf(color.Colorize(color.Green, "--> (Type '"))
-	fmt.Printf("select")
-	fmt.Printf(color.Colorize(color.Green, "' or '"))
-	fmt.Printf("s")
-	fmt.Printf(color.Colorize(color.Green, "' to select a project)\n"))
+		Feedback("<< (", key, ")'", false)
+		Feedback("", value.Name, "' | (", false)
+		Feedback("", len(value.Tasks), " Tasks) >>\n", false)
 
-	// done and pause
-	fmt.Println()
-	fmt.Printf(color.Colorize(color.Green, "--> (Type '"))
-	fmt.Printf("done")
-	fmt.Printf(color.Colorize(color.Green, "' or '"))
-	fmt.Printf("00")
-	fmt.Printf(color.Colorize(color.Green, "' or '"))
-	fmt.Printf("q")
-	fmt.Printf(color.Colorize(color.Green, "' to end)\n"))
-
-	fmt.Printf(color.Colorize(color.Green, "--> (Type '"))
-	fmt.Printf("pause")
-	fmt.Printf(color.Colorize(color.Green, "' or '"))
-	fmt.Printf("+")
-	fmt.Printf(color.Colorize(color.Green, "' to pause)\n"))
+	}
 }
-// Error Message about max id
-func PrintMaxIdError(MaxID int){
-	// ERROR message
-	fmt.Printf(color.Colorize(color.Red, "ERROR: Max id is ("))
-	fmt.Printf("%v", MaxID)
-	fmt.Printf(color.Colorize(color.Red, ")\n"))
+
+/*<=================================================== Small Help functions ===================================================>*/
+
+// Ask before delete
+func DeleteCheckQuestion(name string) bool {
+
+	if name != "" {
+		Feedback("<< Do you really want to delete '", name, "' ??? >>", true)
+	}
+
+	// Get reader
+	reader := bufio.NewReader(os.Stdin)
+
+	// Get input
+	input := Get_input(reader)
+
+	// Check if 'no' is entered
+	check := "no" == input
+
+	return check
+}
+
+func PressEnter() {
+	var command string
+	fmt.Scanln(&command)
 }
 
 // Check db for data and return bool
@@ -1033,68 +1015,6 @@ func CheckDBForData(data []JsonData) bool {
 	}
 
 	return GetId
-}
-
-// Print add tasks commands
-func PrintAddTaskCommands() {
-	// add task
-	fmt.Printf(color.Colorize(color.Green, "\n---> (Type '"))
-	fmt.Printf("add")
-	fmt.Printf(color.Colorize(color.Green, "' or '"))
-	fmt.Printf("a")
-	fmt.Printf(color.Colorize(color.Green, "' to add task)\n"))
-
-	// delete task
-	fmt.Printf(color.Colorize(color.Green, "---> (Type '"))
-	fmt.Printf("delete")
-	fmt.Printf(color.Colorize(color.Green, "', '"))
-	fmt.Printf("del")
-	fmt.Printf(color.Colorize(color.Green, "' or '"))
-	fmt.Printf("d")
-	fmt.Printf(color.Colorize(color.Green, "' to delete task)\n"))
-
-	// show task
-	fmt.Printf(color.Colorize(color.Green, "---> (Type '"))
-	fmt.Printf("show")
-	fmt.Printf(color.Colorize(color.Green, "' or '"))
-	fmt.Printf("s")
-	fmt.Printf(color.Colorize(color.Green, "' to print all tasks)\n"))
-
-	// back to leave
-	fmt.Printf(color.Colorize(color.Green, "---> (Type '"))
-	fmt.Printf("back")
-	fmt.Printf(color.Colorize(color.Green, "' or '"))
-	fmt.Printf("b")
-	fmt.Printf(color.Colorize(color.Green, "' to leave project)\n"))
-
-	// back to leave
-	fmt.Printf(color.Colorize(color.Green, "---> (Type '"))
-	fmt.Printf("quit")
-	fmt.Printf(color.Colorize(color.Green, "' or '"))
-	fmt.Printf("q")
-	fmt.Printf(color.Colorize(color.Green, "' to stop)\n"))
-
-	fmt.Printf(color.Colorize(color.Green, "=> "))
-}
-
-// Print projects
-func PrintProjects(id int) {
-
-	// Get data from json
-	data := OpenAndGetDataFromJson()
-
-	fmt.Println(color.Colorize(color.Green, "\n=> My Projects:"))
-
-	// Print all projects id --> name --> tasks
-	for key, value := range data[id].Projects {
-		fmt.Printf(color.Colorize(color.Green, "=> [id: "))
-		fmt.Printf("%v", key)
-		fmt.Printf(color.Colorize(color.Green, "] -> '"))
-		fmt.Printf("%v", value.Name)
-		fmt.Printf(color.Colorize(color.Green, "' -> ("))
-		fmt.Printf("%v", len(value.Tasks))
-		fmt.Printf(color.Colorize(color.Green, ")\n"))
-	}
 }
 
 // Open and get data
@@ -1130,7 +1050,7 @@ func AskForId() int {
 loop:
 
 	// Ask for id
-	fmt.Print(color.Colorize(color.Red, "--> ID: "))
+	Feedback("<< ", "", "ID: ", true)
 
 	// Get reader
 	reader := bufio.NewReader(os.Stdin)
@@ -1145,7 +1065,7 @@ loop:
 	if err != nil {
 
 		// Error message
-		fmt.Println(color.Colorize(color.Red, "ERROR: ID must be a positive number!"))
+		Feedback("[ERROR] : ", "ID", " must be a number!\n", true)
 
 		// Go back and ask again
 		goto loop
@@ -1186,6 +1106,20 @@ func GetLastId(filename string) int {
 		id = 1
 	} else {
 		id = int(BiggestId + 1)
+	}
+
+	return id
+}
+
+// Find Real id to prevent error when some activity is deleted
+func FindRealId(id int) int {
+	FindAllitems := gojsonq.New().File(filename).Count()
+
+	Maxid := int(FindAllitems) - 1
+
+	// if entered id is bigger then maximum possible id change it
+	if id > Maxid {
+		id = Maxid
 	}
 
 	return id
@@ -1255,7 +1189,7 @@ func ClearScreen() {
 // Handle Errors
 func ErrorHandling(err error, location string) {
 	if err != nil {
-		fmt.Println(color.Colorize(color.Red, (location+":")), err.Error())
+		Feedback(location, ":", err.Error(), true)
 	}
 }
 
