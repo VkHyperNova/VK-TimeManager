@@ -392,6 +392,8 @@ func Save_time(reader *bufio.Reader, elapsed time.Duration, id int, PauseTime in
 
 	if check {
 
+	
+
 		// If 'no' is entered tell the user
 		Feedback("<< ", "LAST TIME NOT SAVED", " >>\n", true)
 
@@ -405,6 +407,7 @@ func Save_time(reader *bufio.Reader, elapsed time.Duration, id int, PauseTime in
 
 	} else {
 
+		ClearScreen()
 		// Tell the user about saving the time
 		Feedback("<< ", "LAST TIME HAS BEEN SAVED", " >>\n", false)
 
@@ -822,10 +825,10 @@ func PrintTimeleft() {
 
 func Feedback(first interface{}, middle interface{}, last interface{}, red bool) {
 
-	ToPrint := []string{ColorGreen(first), ColorPurple(middle), ColorGreen(last)}
+	ToPrint := []string{ColorGreen(first), ColorWhite(middle), ColorGreen(last)}
 
 	if red {
-		ToPrint = []string{ColorRed(first), ColorPurple(middle), ColorRed(last)}
+		ToPrint = []string{ColorRed(first), ColorWhite(middle), ColorRed(last)}
 	}
 
 	for _, v := range ToPrint {
@@ -845,6 +848,11 @@ func ColorPurple(item interface{}) string {
 
 func ColorGreen(item interface{}) string {
 	colorized := fmt.Sprintf(color.Colorize(color.Green, "%v"), item)
+	return colorized
+}
+
+func ColorWhite(item interface{}) string {
+	colorized := fmt.Sprintf(color.Colorize(color.White, "%v"), item)
 	return colorized
 }
 
@@ -871,7 +879,7 @@ func PrintTaskAddedToProject(tName string, pName string) {
 func PrintCommands(command_type string) {
 
 	// Print command type
-	fmt.Printf(ColorGreen("\n<< ") + ColorPurple(command_type) + ColorGreen(" Commands >> \n"))
+	fmt.Printf(ColorGreen("\n<< ") + ColorWhite(command_type) + ColorGreen(" Commands >> \n"))
 
 	// Print commands by type
 	switch command_type {

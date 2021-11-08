@@ -11,16 +11,6 @@
         "tasks": []
       },
       {
-        "name": "asd2",
-        "tasks": [
-          "asdas",
-          "sdsd",
-          "asdds",
-          "sss",
-          "sdsad"
-        ]
-      },
-      {
         "name": "asd3",
         "tasks": []
       },
@@ -94,15 +84,6 @@
     "short": "a9",
     "hours": 0,
     "minutes": 0,
-    "projects": [],
-    "function": "Default"
-  },
-  {
-    "id": 10,
-    "activity": "asd11",
-    "short": "a11",
-    "hours": 0,
-    "minutes": 6,
     "projects": [],
     "function": "Default"
   }
