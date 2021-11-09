@@ -4,7 +4,7 @@
     "activity": "asd1",
     "short": "a1",
     "hours": 24,
-    "minutes": 7,
+    "minutes": 19,
     "projects": [
       {
         "name": "asd1",
@@ -24,10 +24,12 @@
       },
       {
         "name": "asd6",
-        "tasks": []
+        "tasks": [
+          "asd"
+        ]
       },
       {
-        "name": "asd7",
+        "name": "asd2",
         "tasks": []
       }
     ],
@@ -70,18 +72,9 @@
     "function": "Default"
   },
   {
-    "id": 7,
-    "activity": "asd8",
-    "short": "a8",
-    "hours": 4,
-    "minutes": 6,
-    "projects": [],
-    "function": "Default"
-  },
-  {
-    "id": 8,
-    "activity": "asd9",
-    "short": "a9",
+    "id": 10,
+    "activity": "asd11",
+    "short": "a11",
     "hours": 0,
     "minutes": 0,
     "projects": [],

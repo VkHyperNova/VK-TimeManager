@@ -62,7 +62,7 @@ func Commandline() {
 	for true {
 
 		command := Get_input(reader)
-		MainSwitch(command, data, reader)
+		ActivitySwitch(command, data, reader)
 
 	}
 }
@@ -105,8 +105,8 @@ func AddDefaultCommands() []JsonData {
 	return data
 }
 
-// MainSwitch
-func MainSwitch(command string, data []JsonData, reader *bufio.Reader) {
+// ActivitySwitch
+func ActivitySwitch(command string, data []JsonData, reader *bufio.Reader) {
 
 	switch command {
 	case "add", "a":
@@ -153,22 +153,21 @@ func StartActivity(reader *bufio.Reader, start time.Time, Activity string, id in
 	// Print Projects
 	PrintProjects(id)
 
+	// Start ProjectsSwitch
+	ProjectsSwitch(reader, start, id, Activity)
+	
+}
+
+func ProjectsSwitch(reader *bufio.Reader, start time.Time, id int, Activity string){
 	// Loop for input
 	loop := true
-
-	// Pause print
-	PausePrintingCommands := false
 
 	// Define Pause time
 	PauseTime := 0
 
 	for loop {
 
-		// Print main commands
-		if !PausePrintingCommands {
-			PrintCommands("Projects")
-
-		}
+		PrintCommands("Projects")
 
 		// Get input from user
 		command := Get_input(reader)
@@ -207,9 +206,6 @@ func StartActivity(reader *bufio.Reader, start time.Time, Activity string, id in
 			// Tell user that this activity is paused
 			Feedback("<< [", Activity, "] paused! Press any key to continue! >>", true)
 
-			// Print pause commands
-			PausePrintingCommands = true
-
 			// Time now
 			startPause := time.Now()
 
@@ -224,9 +220,6 @@ func StartActivity(reader *bufio.Reader, start time.Time, Activity string, id in
 
 			// Tell user about Unpause
 			Feedback("<< Unpaused [Pause time: ", elapsedPause, "] >>\n", false)
-
-			// Print default commands
-			PausePrintingCommands = false
 
 		default:
 			ClearScreen()
@@ -392,8 +385,6 @@ func Save_time(reader *bufio.Reader, elapsed time.Duration, id int, PauseTime in
 
 	if check {
 
-	
-
 		// If 'no' is entered tell the user
 		Feedback("<< ", "LAST TIME NOT SAVED", " >>\n", true)
 
@@ -408,6 +399,7 @@ func Save_time(reader *bufio.Reader, elapsed time.Duration, id int, PauseTime in
 	} else {
 
 		ClearScreen()
+
 		// Tell the user about saving the time
 		Feedback("<< ", "LAST TIME HAS BEEN SAVED", " >>\n", false)
 
@@ -462,36 +454,11 @@ func UpdateJsonFile(elapsed time.Duration, id int, PauseTime int) {
 // Add new Project
 func AddProject(id int) {
 
-	// Bookmark
-loop:
-
-	// Get reader
-	reader := bufio.NewReader(os.Stdin)
-
-	// Ask for project name
-	Feedback("\n<< Project name? >>", "", "\n=> ", false)
-
-	// Save answer
-	pName := Get_input(reader)
-
 	// Get data from json
 	data := OpenAndGetDataFromJson()
 
-	// Check if project name already exist in db
-	for _, value := range data {
-		for _, v := range value.Projects {
-			switch pName {
-			case v.Name:
-
-				// Tell user that project already exist in database
-				Feedback("\n<< [Error]: Project '", pName, "' already exist in db >>\n", true)
-
-				// Restart the for loop, go to back to loop label
-				goto loop
-			}
-		}
-
-	}
+	// Get project name and check if it already exist in db
+	pName := GetAndCheckProject(data)
 
 	// Init new project
 	NewProject := Project{pName, []string{}}
@@ -509,27 +476,46 @@ loop:
 	Feedback("\n<< Project '", pName, "' added to db! >>\n", false)
 }
 
+func GetAndCheckProject(data []JsonData) string {
+
+	
+loop: // Bookmark
+
+	// Get reader
+	reader := bufio.NewReader(os.Stdin)
+
+	// Ask for project name
+	Feedback("\n<< Project name? >>", "", "\n=> ", false)
+
+	// Save answer
+	pName := Get_input(reader)
+
+	// Check if project name already exist in db
+	for _, value := range data {
+		for _, v := range value.Projects {
+			switch pName {
+			case v.Name:
+
+				// Tell user that project already exist in database
+				Feedback("\n<< [Error]: Project '", pName, "' already exist in db >>\n", true)
+
+				// Restart the for loop, go to back to loop label
+				goto loop
+			}
+		}
+
+	}
+	return pName
+}
+
 // Delete Project
 func DeleteProject(id int) {
-loop:
-	// Ask and save id
-	projectID := AskForId()
 
 	// Get data from json
 	data := OpenAndGetDataFromJson()
 
-	// Save maximum id
-	MaxID := len(data[id].Projects) - 1
-
-	if projectID > MaxID {
-		// ERROR message
-		Feedback("<< [ERROR] Max ID: [", MaxID, "] >>\n\n", true)
-		goto loop
-	} else if projectID < 0 {
-		// ERROR message
-		Feedback("<< [ERROR] id cant be negative!", "", " >>\n", true)
-		goto loop
-	}
+	// Get project id
+	projectID := SelectProjectId(id, data)
 
 	// Project details
 	project := data[id].Projects[projectID]
@@ -571,7 +557,6 @@ func ShowTasks(id int, projectid int) {
 		Feedback("", value, "'", false)
 	}
 	fmt.Println()
-
 }
 
 // Delete Task
@@ -627,17 +612,106 @@ loop:
 // Add task to project
 func SelectProject(id int, start time.Time, Activity string) {
 
-	// Bookmark
-loop:
+	// Get data from json
+	data := OpenAndGetDataFromJson()
+
+	// Get Project id
+	ProjectId := SelectProjectId(id, data)
 
 	// Get reader
 	reader := bufio.NewReader(os.Stdin)
 
+	ClearScreen()
+
+	// Get Project Name by activity id and project id
+	ProjectName := GetProjectName(id, ProjectId, data)
+
+	// Print project name
+	Feedback("\n<< Project: ", ProjectName, " >>\n", false)
+
+	// Show tasks
+	ShowTasks(id, ProjectId)
+
+	// Print add task commands
+	PrintCommands("Tasks")
+
+	// Start TasksSwitch commands loop
+	TasksSwitch(reader, start, Activity, id, ProjectName, ProjectId)
+}
+
+func TasksSwitch(reader *bufio.Reader, start time.Time, Activity string, id int, ProjectName string, ProjectId int) {
+
+	Tasksloop := true
+
+	for Tasksloop {
+
+		// Get input from user
+		command := Get_input(reader)
+
+		// Elapsed time since activity start
+		elapsed := time.Since(start)
+
+		switch command {
+
+		case "back", "b":
+
+			// End loop
+			Tasksloop = false
+
+			ClearScreen()
+
+			// Print elapsed time since start
+			PrintElapsedTime(Activity, elapsed, start)
+
+			// Print Projects
+			PrintProjects(id)
+		case "add", "a":
+			AddTask(ProjectName, ProjectId, id)
+		case "delete", "del", "d":
+			DeleteTask(id, ProjectId)
+		case "show", "s":
+			ShowTasks(id, ProjectId)
+			PrintCommands("Tasks")
+		case "quit", "q", "00":
+
+			// Tell user about elapsed time
+			Feedback("<< You have spent ", elapsed, " >>\n", false)
+
+			// Ask for save time
+			Save_time(reader, elapsed, id, 0)
+
+			// End loop
+			Tasksloop = false
+
+		default:
+			ClearScreen()
+
+			// Print elapsed time since start
+			PrintElapsedTime(Activity, elapsed, start)
+
+			// Print commands for tasks
+			PrintCommands("Tasks")
+
+		}
+	}
+}
+
+func GetProjectName(id int, ProjectId int, data []JsonData) string {
+	// Find project name by projectid
+	CurrentProject := data[id].Projects[ProjectId]
+
+	// Save project name
+	pName := CurrentProject.Name
+
+	return pName
+}
+
+func SelectProjectId(id int, data []JsonData) int {
+	// Bookmark
+loop:
+
 	// Ask for id
 	ProjectId := AskForId()
-
-	// Get data from json
-	data := OpenAndGetDataFromJson()
 
 	// Save maximum id
 	MaxID := len(data[id].Projects) - 1
@@ -660,72 +734,7 @@ loop:
 		goto loop
 	}
 
-	ClearScreen()
-
-	// Find project name by projectid
-	CurrentProject := data[id].Projects[ProjectId]
-
-	// Save project name
-	pName := CurrentProject.Name
-
-	// Print project name
-	Feedback("\n<< Project: ", pName, " >>\n", false)
-
-	// Show tasks
-	ShowTasks(id, ProjectId)
-
-	// Print add task commands
-	PrintCommands("Tasks")
-
-	loop2 := true
-
-	for loop2 {
-
-		// Get input from user
-		command := Get_input(reader)
-
-		// Elapsed time since activity start
-		elapsed := time.Since(start)
-
-		switch command {
-		case "back", "b":
-
-			loop2 = false
-			ClearScreen()
-			// Print elapsed time since start
-			PrintElapsedTime(Activity, elapsed, start)
-			// Print Projects
-			PrintProjects(id)
-
-		case "add", "a":
-			AddTask(pName, ProjectId, id)
-		case "delete", "del", "d":
-			DeleteTask(id, ProjectId)
-		case "show", "s":
-			ShowTasks(id, ProjectId)
-			PrintCommands("Tasks")
-		case "quit", "q", "00":
-
-			// Tell user about elapsed time
-			Feedback("<< You have spent ", elapsed, " >>\n", false)
-
-			// Ask for save time
-			Save_time(reader, elapsed, id, 0)
-
-			// End loop
-			loop2 = false
-
-		default:
-			ClearScreen()
-
-			// Print elapsed time since start
-			PrintElapsedTime(Activity, elapsed, start)
-
-			// Print commands for tasks
-			PrintCommands("Tasks")
-
-		}
-	}
+	return ProjectId
 }
 
 // Add task
@@ -841,11 +850,6 @@ func ColorRed(item interface{}) string {
 	return colorized
 }
 
-func ColorPurple(item interface{}) string {
-	colorized := fmt.Sprintf(color.Colorize(color.Purple, "%v"), item)
-	return colorized
-}
-
 func ColorGreen(item interface{}) string {
 	colorized := fmt.Sprintf(color.Colorize(color.Green, "%v"), item)
 	return colorized
@@ -937,11 +941,6 @@ func PrintTasksCommands() {
 	Feedback(" | <", "quit", "> or ", false)
 	Feedback("<", "q", "> or ", false)
 	Feedback("<", "00", "> | >>", false)
-}
-
-func MakeCommandsArray(name string, short string) string {
-	array := ColorGreen("<") + ColorPurple(name) + ColorGreen("> or <") + ColorPurple(short) + ColorGreen(">")
-	return array
 }
 
 func PrintAllActivities(data []JsonData) {
