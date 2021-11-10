@@ -1,83 +1,23 @@
 [
   {
     "id": 0,
-    "activity": "asd1",
-    "short": "a1",
-    "hours": 24,
-    "minutes": 19,
+    "activity": "asd",
+    "short": "s",
+    "hours": 0,
+    "minutes": 0,
     "projects": [
-      {
-        "name": "asd1",
-        "tasks": []
-      },
-      {
-        "name": "asd3",
-        "tasks": []
-      },
-      {
-        "name": "asd4",
-        "tasks": []
-      },
-      {
-        "name": "asd5",
-        "tasks": []
-      },
-      {
-        "name": "asd6",
-        "tasks": [
-          "asd"
-        ]
-      },
-      {
-        "name": "asd2",
-        "tasks": []
-      }
-    ],
-    "function": "Default"
-  },
-  {
-    "id": 1,
-    "activity": "asd2",
-    "short": "a2",
-    "hours": 2,
-    "minutes": 5,
-    "projects": [
-      {
-        "name": "project1",
-        "tasks": []
-      },
       {
         "name": "asd",
         "tasks": []
       }
-    ],
-    "function": "Default"
+    ]
   },
   {
-    "id": 4,
-    "activity": "asd5",
-    "short": "a5",
-    "hours": 11,
-    "minutes": 0,
-    "projects": [],
-    "function": "Default"
-  },
-  {
-    "id": 5,
-    "activity": "asd6",
-    "short": "a6",
-    "hours": 5,
-    "minutes": 0,
-    "projects": [],
-    "function": "Default"
-  },
-  {
-    "id": 10,
-    "activity": "asd11",
-    "short": "a11",
+    "id": 2,
+    "activity": "asd3",
+    "short": "a3",
     "hours": 0,
     "minutes": 0,
-    "projects": [],
-    "function": "Default"
+    "projects": []
   }
 ]

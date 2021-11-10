@@ -23,7 +23,6 @@ type JsonData struct {
 	Hours    int       `json:"hours"`
 	Minutes  int       `json:"minutes"`
 	Projects []Project `json:"projects"`
-	Function string    `json:"function"`
 }
 
 type Project struct {
@@ -53,8 +52,8 @@ func Commandline() {
 	// Print commands to console
 	Commandline_commands()
 
-	// Add default commands to data
-	data := AddDefaultCommands()
+	// Get data from json
+	data := OpenAndGetDataFromJson()
 
 	// Get reader
 	reader := bufio.NewReader(os.Stdin)
@@ -67,48 +66,12 @@ func Commandline() {
 	}
 }
 
-// Add default commands to data temporarly
-func AddDefaultCommands() []JsonData {
-
-	// Get data from json
-	data := OpenAndGetDataFromJson()
-
-	// If db contains data then get a new id
-	GetId := CheckDBForData(data)
-
-	// Make map of maps
-	DefaultCommands := make(map[int]map[string]string)
-
-	// Add to map
-	DefaultCommands[1] = map[string]string{}
-	DefaultCommands[1]["name"] = "top"
-	DefaultCommands[1]["short"] = "t"
-
-	DefaultCommands[2] = map[string]string{}
-	DefaultCommands[2]["name"] = "add"
-	DefaultCommands[2]["short"] = "a"
-
-	DefaultCommands[3] = map[string]string{}
-	DefaultCommands[3]["name"] = "delete"
-	DefaultCommands[3]["short"] = "del"
-
-	DefaultCommands[4] = map[string]string{}
-	DefaultCommands[4]["name"] = "q"
-	DefaultCommands[4]["short"] = "00"
-
-	// Append to data
-	for _, value := range DefaultCommands {
-		NewValues := ConvertAnswersToJsonData(value["name"], value["short"], GetId, value["name"])
-		data = append(data, NewValues)
-	}
-
-	return data
-}
-
 // ActivitySwitch
 func ActivitySwitch(command string, data []JsonData, reader *bufio.Reader) {
 
 	switch command {
+	case "top", "t":
+		topActivities()
 	case "add", "a":
 		AddActivity()
 	case "delete", "del":
@@ -160,12 +123,12 @@ func StartActivity(reader *bufio.Reader, start time.Time, Activity string, id in
 
 func ProjectsSwitch(reader *bufio.Reader, start time.Time, id int, Activity string){
 	// Loop for input
-	loop := true
+	ProjectLoop := true
 
 	// Define Pause time
 	PauseTime := 0
 
-	for loop {
+	for ProjectLoop {
 
 		PrintCommands("Projects")
 
@@ -189,17 +152,13 @@ func ProjectsSwitch(reader *bufio.Reader, start time.Time, id int, Activity stri
 			PrintProjects(id)
 		case "select", "s":
 			// Select project
-			SelectProject(id, start, Activity)
+			SelectProject(id, start, Activity, PauseTime)
 		case "quit", "00", "q":
 
-			// Tell user elapsed time
-			Feedback("\n<< You have spent ", elapsed, " >>\n", false)
-
-			// Ask for save time
-			Save_time(reader, elapsed, id, PauseTime)
+			SaveAndQuit(elapsed, reader, id, PauseTime)
 
 			// End loop
-			loop = false
+			ProjectLoop = false
 
 		case "pause", "+":
 
@@ -211,6 +170,7 @@ func ProjectsSwitch(reader *bufio.Reader, start time.Time, id int, Activity stri
 
 			// Wait for pressing any key or enter
 			PressEnter()
+			ClearScreen()
 
 			// Elapsed pause time
 			elapsedPause := time.Since(startPause)
@@ -235,14 +195,41 @@ func AddActivity() {
 	// Questions array
 	questions := []string{"\n<< Activity name? >>", "\n << Short name? >>"}
 
-	// Store answers
-	Answers := []string{}
-
 	// Get reader
 	reader := bufio.NewReader(os.Stdin)
 
 	// Get data from json
 	data := OpenAndGetDataFromJson()
+
+	// Ask questions and check if they already exist in db
+	Answers := GetActivityAnswers(reader, questions, data)
+
+	// If db contains data then get a new id
+	GetId := CheckDBForData(data)
+
+	// Convert to JsonData
+	NewValues := ConvertAnswersToJsonData(Answers[0], Answers[1], GetId)
+
+	// Add new Values to the end of file
+	data = append(data, NewValues)
+
+	// Convert it back to byte
+	dataBytes := MarshalIndentToByte(data, "AddItem")
+
+	// Override json file with updated data
+	WriteToFile(dataBytes)
+
+	// Clear the screen
+	ClearScreen()
+
+	// Go back to CommandLine
+	Commandline()
+}
+
+func GetActivityAnswers(reader *bufio.Reader, questions []string, data []JsonData) []string {
+
+	// Store answers
+	Answers := []string{}
 
 	for _, value := range questions {
 
@@ -273,31 +260,11 @@ func AddActivity() {
 		Answers = append(Answers, readerAnswer)
 
 	}
-
-	// If db contains data then get a new id
-	GetId := CheckDBForData(data)
-
-	// Convert to JsonData
-	NewValues := ConvertAnswersToJsonData(Answers[0], Answers[1], GetId, "Default")
-
-	// Add new Values to the end of file
-	data = append(data, NewValues)
-
-	// Convert it back to byte
-	dataBytes := MarshalIndentToByte(data, "AddItem")
-
-	// Override json file with updated data
-	WriteToFile(dataBytes)
-
-	// Clear the screen
-	ClearScreen()
-
-	// Go back to CommandLine
-	Commandline()
+	return Answers
 }
 
 // Get Top activities
-func topActivities(data []JsonData) {
+func topActivities() {
 
 	// Select file
 	jq := gojsonq.New().File(filename)
@@ -347,9 +314,6 @@ func DeleteActivity() {
 
 		// Tell user that index does not exist
 		Feedback("<< ID: '", id, "' not found! >>", true)
-
-		// Wait for enter
-		PressEnter()
 
 		// Return to commandline
 		Commandline()
@@ -610,7 +574,7 @@ loop:
 }
 
 // Add task to project
-func SelectProject(id int, start time.Time, Activity string) {
+func SelectProject(id int, start time.Time, Activity string, PauseTime int) {
 
 	// Get data from json
 	data := OpenAndGetDataFromJson()
@@ -636,10 +600,10 @@ func SelectProject(id int, start time.Time, Activity string) {
 	PrintCommands("Tasks")
 
 	// Start TasksSwitch commands loop
-	TasksSwitch(reader, start, Activity, id, ProjectName, ProjectId)
+	TasksSwitch(reader, start, Activity, id, ProjectName, ProjectId, PauseTime)
 }
 
-func TasksSwitch(reader *bufio.Reader, start time.Time, Activity string, id int, ProjectName string, ProjectId int) {
+func TasksSwitch(reader *bufio.Reader, start time.Time, Activity string, id int, ProjectName string, ProjectId int, PauseTime int) {
 
 	Tasksloop := true
 
@@ -673,12 +637,7 @@ func TasksSwitch(reader *bufio.Reader, start time.Time, Activity string, id int,
 			ShowTasks(id, ProjectId)
 			PrintCommands("Tasks")
 		case "quit", "q", "00":
-
-			// Tell user about elapsed time
-			Feedback("<< You have spent ", elapsed, " >>\n", false)
-
-			// Ask for save time
-			Save_time(reader, elapsed, id, 0)
+			SaveAndQuit(elapsed, reader, id, PauseTime)
 
 			// End loop
 			Tasksloop = false
@@ -1011,6 +970,15 @@ func PressEnter() {
 	fmt.Scanln(&command)
 }
 
+func SaveAndQuit(elapsed time.Duration, reader *bufio.Reader, id int, PauseTime int){
+
+	// Tell user elapsed time
+	Feedback("\n<< You have spent ", elapsed, " >>\n", false)
+
+	// Ask for save time
+	Save_time(reader, elapsed, id, PauseTime)
+}
+
 // Check db for data and return bool
 func CheckDBForData(data []JsonData) bool {
 	// Dont get id if db is empty
@@ -1065,6 +1033,12 @@ loop:
 	// Get input as string
 	GetIdString := Get_input(reader)
 
+	if GetIdString == "q" || GetIdString == "00" {
+		ClearScreen()
+		Feedback("<< ", "Exiting to commandline", " >>", true)
+		Commandline()
+	}
+
 	// Convert string to int
 	GetId, err := strconv.Atoi(GetIdString)
 
@@ -1082,7 +1056,7 @@ loop:
 }
 
 // Encrypt new data and construct a WebsiteData struct for adding it to json file
-func ConvertAnswersToJsonData(Activity_Name string, Activity_Name_short string, GetLastid bool, function string) JsonData {
+func ConvertAnswersToJsonData(Activity_Name string, Activity_Name_short string, GetLastid bool) JsonData {
 
 	// ID is 0 if database is empty
 	Id := 0
@@ -1099,7 +1073,7 @@ func ConvertAnswersToJsonData(Activity_Name string, Activity_Name_short string, 
 		Hours:    0,
 		Minutes:  0,
 		Projects: []Project{},
-		Function: function,
+		
 	}
 
 	return ValuesToAdd
