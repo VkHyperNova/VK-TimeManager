@@ -272,16 +272,21 @@ func topActivities() {
 	// Sort by activity, hours and minutes and select top 5
 	top := jq.Limit(5).SortBy("hours", "desc").Select("activity", "hours", "minutes").Get()
 
-	// Pretty print
-	b, err := json.MarshalIndent(top, "", "  ")
+	toJson, _ := json.Marshal(top)
+	jsonString := string(toJson)
 
-	// Print error if any
-	ErrorHandling(err, "topActivities func")
+	// Declared an empty map interface
+    var result []JsonData
 
-	ClearScreen()
+    // Unmarshal or Decode the JSON to the interface.
+    json.Unmarshal([]byte(jsonString), &result)
 
-	// Print activities
-	fmt.Print(string(b))
+	for k,v := range result {
+		Feedback("<< [", k + 1," Place]", false)
+		Feedback(" ", v.Activity," ", false)
+		Feedback("(", v.Hours," hours ", false)
+		Feedback("", v.Minutes," minutes) >>\n", false)
+	}	
 
 	// Press enter to go back to commandline
 	Feedback("\n<< PRESS", " ENTER ", "TO GO BACK TO COMMANDLINE >>", false)
