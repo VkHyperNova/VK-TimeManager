@@ -118,10 +118,10 @@ func StartActivity(reader *bufio.Reader, start time.Time, Activity string, id in
 
 	// Start ProjectsSwitch
 	ProjectsSwitch(reader, start, id, Activity)
-	
+
 }
 
-func ProjectsSwitch(reader *bufio.Reader, start time.Time, id int, Activity string){
+func ProjectsSwitch(reader *bufio.Reader, start time.Time, id int, Activity string) {
 	// Loop for input
 	ProjectLoop := true
 
@@ -276,17 +276,17 @@ func topActivities() {
 	jsonString := string(toJson)
 
 	// Declared an empty map interface
-    var result []JsonData
+	var result []JsonData
 
-    // Unmarshal or Decode the JSON to the interface.
-    json.Unmarshal([]byte(jsonString), &result)
+	// Unmarshal or Decode the JSON to the interface.
+	json.Unmarshal([]byte(jsonString), &result)
 
-	for k,v := range result {
-		Feedback("<< [", k + 1," Place]", false)
-		Feedback(" ", v.Activity," ", false)
-		Feedback("(", v.Hours," hours ", false)
-		Feedback("", v.Minutes," minutes) >>\n", false)
-	}	
+	for k, v := range result {
+		Feedback("<< [", k+1, " Place]", false)
+		Feedback(" ", v.Activity, " ", false)
+		Feedback("(", v.Hours, " hours ", false)
+		Feedback("", v.Minutes, " minutes) >>\n", false)
+	}
 
 	// Press enter to go back to commandline
 	Feedback("\n<< PRESS", " ENTER ", "TO GO BACK TO COMMANDLINE >>", false)
@@ -447,7 +447,6 @@ func AddProject(id int) {
 
 func GetAndCheckProject(data []JsonData) string {
 
-	
 loop: // Bookmark
 
 	// Get reader
@@ -833,10 +832,30 @@ func PrintElapsedTime(Activity string, elapsed time.Duration, start time.Time) {
 // Print Program name and version
 func PrintProgramName(HoursLeft int, MinutesLeft int) {
 
-	Feedback("\n<< VK TimeManager v", ProgramVersion, " >>\n", false)
+	// Overall time
+	AppTime := OverallTimeSpentOnThisApp()
+
+	Feedback("\n<< VK TimeManager v", ProgramVersion, " ", false)
+	Feedback("(", AppTime," hours) >>\n", false)
 	Feedback("\n<< You have ", HoursLeft, " hours ", false)
 	Feedback("and ", MinutesLeft, " minutes left", false)
 	Feedback(" till ", "22:00", " >>\n\n", false)
+
+}
+
+func OverallTimeSpentOnThisApp() int {
+	hoursSpent := gojsonq.New().File(filename).Sum("hours")
+	minutesSpent := gojsonq.New().File(filename).Sum("minutes")
+
+	// Get hours out of all minutes
+	GetHours := int(minutesSpent / 60)
+
+	// Remove hours and get minutes left
+	//GetMinutes := int(minutesSpent) - (GetHours * 60)
+
+	OverallHours := int(hoursSpent) + GetHours
+
+	return OverallHours
 }
 
 func PrintTaskAddedToProject(tName string, pName string) {
@@ -975,7 +994,7 @@ func PressEnter() {
 	fmt.Scanln(&command)
 }
 
-func SaveAndQuit(elapsed time.Duration, reader *bufio.Reader, id int, PauseTime int){
+func SaveAndQuit(elapsed time.Duration, reader *bufio.Reader, id int, PauseTime int) {
 
 	// Tell user elapsed time
 	Feedback("\n<< You have spent ", elapsed, " >>\n", false)
@@ -1078,7 +1097,6 @@ func ConvertAnswersToJsonData(Activity_Name string, Activity_Name_short string, 
 		Hours:    0,
 		Minutes:  0,
 		Projects: []Project{},
-		
 	}
 
 	return ValuesToAdd

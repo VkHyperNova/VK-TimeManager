@@ -3,8 +3,8 @@
     "id": 0,
     "activity": "asd",
     "short": "s",
-    "hours": 0,
-    "minutes": 0,
+    "hours": 12,
+    "minutes": 56,
     "projects": [
       {
         "name": "asd",
@@ -16,8 +16,24 @@
     "id": 2,
     "activity": "asd3",
     "short": "a3",
-    "hours": 0,
-    "minutes": 0,
+    "hours": 4,
+    "minutes": 40,
+    "projects": []
+  },
+  {
+    "id": 3,
+    "activity": "asd23",
+    "short": "ss",
+    "hours": 13,
+    "minutes": 49,
+    "projects": []
+  },
+  {
+    "id": 4,
+    "activity": "somenew",
+    "short": "ssdsd",
+    "hours": 2,
+    "minutes": 50,
     "projects": []
   }
 ]
